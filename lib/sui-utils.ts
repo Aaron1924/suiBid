@@ -59,3 +59,65 @@ export function parseObjectToItem(object: any): MarketplaceItem | null {
     return null
   }
 }
+
+// New, specific types for a parsed Auction object from our smart contract
+export interface ParsedNFT {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  creator: string;
+}
+
+export interface ParsedAuction {
+  id: string;
+  item: ParsedNFT;
+  seller: string;
+  minBid: string;
+  highestBid: string;
+  highestBidder: string | null;
+  endTime: number;
+  isActive: boolean;
+}
+
+/**
+ * Parses the complex, nested Sui object for an Auction into a clean,
+ * UI-friendly format.
+ * @param object The raw Sui object for a suibid::auction::Auction<suibid::nft::BidNFT>
+ */
+export function parseAuctionObject(object: any): ParsedAuction | null {
+  try {
+    const content = object.data?.content;
+    if (!content || !content.fields) return null;
+
+    const auctionFields = content.fields;
+    // The actual NFT is nested inside the 'item' field of the auction
+    const itemFields = auctionFields.item?.fields;
+
+    if (!itemFields) return null;
+
+    const parsedItem: ParsedNFT = {
+      id: itemFields.id.id,
+      name: itemFields.name,
+      description: itemFields.description,
+      imageUrl: itemFields.image_url,
+      creator: itemFields.creator,
+    };
+
+    return {
+      id: auctionFields.id.id,
+      item: parsedItem,
+      seller: auctionFields.seller,
+      minBid: auctionFields.min_bid,
+      highestBid: auctionFields.highest_bid,
+      // The `highest_bidder` is an Option<address>, which translates to an object with a `vec`
+      // The vec is empty for None, and has one element for Some.
+      highestBidder: auctionFields.highest_bidder.fields.value?.fields.vec[0] || null,
+      endTime: parseInt(auctionFields.end_time, 10),
+      isActive: auctionFields.active,
+    };
+  } catch (error) {
+    console.error("Failed to parse auction object:", error);
+    return null;
+  }
+}
