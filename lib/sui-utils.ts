@@ -39,6 +39,17 @@ export interface Bid {
   timestamp: number
 }
 
+export interface ParsedAuction {
+  id: string
+  item: string
+  seller: string
+  minBid: number
+  highestBid: number
+  highestBidder: string | null
+  endTime: number
+  active: boolean
+}
+
 // Parse Sui object to marketplace item
 export function parseObjectToItem(object: any): MarketplaceItem | null {
   try {
@@ -60,64 +71,25 @@ export function parseObjectToItem(object: any): MarketplaceItem | null {
   }
 }
 
-// New, specific types for a parsed Auction object from our smart contract
-export interface ParsedNFT {
-  id: string;
-  name: string;
-  description: string;
-  imageUrl: string;
-  creator: string;
-}
-
-export interface ParsedAuction {
-  id: string;
-  item: ParsedNFT;
-  seller: string;
-  minBid: string;
-  highestBid: string;
-  highestBidder: string | null;
-  endTime: number;
-  isActive: boolean;
-}
-
-/**
- * Parses the complex, nested Sui object for an Auction into a clean,
- * UI-friendly format.
- * @param object The raw Sui object for a suibid::auction::Auction<suibid::nft::BidNFT>
- */
 export function parseAuctionObject(object: any): ParsedAuction | null {
   try {
-    const content = object.data?.content;
-    if (!content || !content.fields) return null;
+    const content = object.data?.content
+    if (!content || content.dataType !== "moveObject") return null
 
-    const auctionFields = content.fields;
-    // The actual NFT is nested inside the 'item' field of the auction
-    const itemFields = auctionFields.item?.fields;
-
-    if (!itemFields) return null;
-
-    const parsedItem: ParsedNFT = {
-      id: itemFields.id.id,
-      name: itemFields.name,
-      description: itemFields.description,
-      imageUrl: itemFields.image_url,
-      creator: itemFields.creator,
-    };
+    const fields = content.fields as any
+    if (!fields) return null
 
     return {
-      id: auctionFields.id.id,
-      item: parsedItem,
-      seller: auctionFields.seller,
-      minBid: auctionFields.min_bid,
-      highestBid: auctionFields.highest_bid,
-      // The `highest_bidder` is an Option<address>, which translates to an object with a `vec`
-      // The vec is empty for None, and has one element for Some.
-      highestBidder: auctionFields.highest_bidder.fields.value?.fields.vec[0] || null,
-      endTime: parseInt(auctionFields.end_time, 10),
-      isActive: auctionFields.active,
-    };
-  } catch (error) {
-    console.error("Failed to parse auction object:", error);
-    return null;
+      id: fields.id?.id || object.data?.objectId,
+      item: fields.item?.fields?.id?.id || fields.item || "",
+      seller: fields.seller || "",
+      minBid: Number.parseInt(fields.min_bid || "0", 10),
+      highestBid: Number.parseInt(fields.highest_bid || "0", 10),
+      highestBidder: fields.highest_bidder?.fields?.vec?.[0] || fields.highest_bidder || null,
+      endTime: Number.parseInt(fields.end_time || "0", 10),
+      active: fields.active ?? true,
+    }
+  } catch {
+    return null
   }
 }
