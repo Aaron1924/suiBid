@@ -58,7 +58,7 @@ export function placeBidTx(itemType: string, auctionId: string, amount: bigint |
 /**
  * Tạo Transaction Block để kết thúc đấu giá (Settlement).
  * NFT sẽ được chuyển từ Auction Object -> Winner.
- * 
+ *
  * @param itemType Loại của NFT
  * @param auctionId ID phiên đấu giá
  */
