@@ -13,10 +13,10 @@ import { Separator } from "@/components/ui/separator"
 import { TransactionStatus, type TransactionState } from "@/components/transaction-status"
 import { formatAddress, formatSui, parseObjectToItem } from "@/lib/sui-utils"
 import { getMockListingById, getMockBidsForListing } from "@/lib/mock-marketplace-items"
-import { ArrowLeft, ExternalLink, Package, User, Clock, Wallet, Store } from "lucide-react"
+import { ArrowLeft, ExternalLink, Package, User, Clock, Wallet, Store, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ConnectButton } from "@mysten/dapp-kit"
+import { ConnectWallet } from "@/components/connect-wallet"
 import { BidPositionIndicator } from "@/components/bid-position-indicator"
 
 export function ItemDetailContent() {
@@ -86,7 +86,7 @@ export function ItemDetailContent() {
     try {
       const tx = new Transaction()
       // In production, this would call your marketplace contract
-      toast.info("In production, this would submit a bid transaction to your marketplace contract")
+      // toast.info("In production, this would submit a bid transaction to your marketplace contract")
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
       setTxState("success")
@@ -140,7 +140,7 @@ export function ItemDetailContent() {
           <p className="text-muted-foreground mb-6 max-w-md">
             Connect your Sui wallet to view your item details and manage bids.
           </p>
-          <ConnectButton className="!bg-primary !text-primary-foreground !rounded-md !px-6 !py-3 !text-sm !font-medium hover:!bg-primary/90" />
+          <ConnectWallet />
         </div>
       </div>
     )
@@ -227,6 +227,29 @@ export function ItemDetailContent() {
 
           <Separator />
 
+          {/* Current Bid - Highlighted Block */}
+          {isFromMarketplace && mockListing && (
+            <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-primary/10 p-3">
+                      <TrendingUp className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground font-medium">Current Bid</p>
+                      <p className="text-3xl font-bold text-primary">{formatSui(mockListing.currentBid)} SUI</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Total Bids</p>
+                    <p className="text-2xl font-semibold">{mockBids.length}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Owner/Seller Info */}
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-sm">
@@ -255,12 +278,6 @@ export function ItemDetailContent() {
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
-            {isFromMarketplace && mockListing && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Current Bid:</span>
-                <span className="font-semibold text-primary">{formatSui(mockListing.currentBid)} SUI</span>
-              </div>
-            )}
           </div>
 
           <Separator />
@@ -278,7 +295,7 @@ export function ItemDetailContent() {
                 {!account ? (
                   <div className="text-center py-4">
                     <p className="text-sm text-muted-foreground mb-4">Connect your wallet to place a bid</p>
-                    <ConnectButton className="!bg-primary !text-primary-foreground !rounded-md !px-6 !py-3 !text-sm !font-medium hover:!bg-primary/90" />
+                    <ConnectWallet />
                   </div>
                 ) : (
                   <>
@@ -288,7 +305,7 @@ export function ItemDetailContent() {
                         <Input
                           id="bidAmount"
                           type="number"
-                          step="0.01"
+                          step="1"
                           min="0"
                           placeholder="0.00"
                           value={bidAmount}
