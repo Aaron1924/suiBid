@@ -39,6 +39,17 @@ export interface Bid {
   timestamp: number
 }
 
+export interface ParsedAuction {
+  id: string
+  item: string
+  seller: string
+  minBid: number
+  highestBid: number
+  highestBidder: string | null
+  endTime: number
+  active: boolean
+}
+
 // Parse Sui object to marketplace item
 export function parseObjectToItem(object: any): MarketplaceItem | null {
   try {
@@ -60,3 +71,25 @@ export function parseObjectToItem(object: any): MarketplaceItem | null {
   }
 }
 
+export function parseAuctionObject(object: any): ParsedAuction | null {
+  try {
+    const content = object.data?.content
+    if (!content || content.dataType !== "moveObject") return null
+
+    const fields = content.fields as any
+    if (!fields) return null
+
+    return {
+      id: fields.id?.id || object.data?.objectId,
+      item: fields.item?.fields?.id?.id || fields.item || "",
+      seller: fields.seller || "",
+      minBid: Number.parseInt(fields.min_bid || "0", 10),
+      highestBid: Number.parseInt(fields.highest_bid || "0", 10),
+      highestBidder: fields.highest_bidder?.fields?.vec?.[0] || fields.highest_bidder || null,
+      endTime: Number.parseInt(fields.end_time || "0", 10),
+      active: fields.active ?? true,
+    }
+  } catch {
+    return null
+  }
+}

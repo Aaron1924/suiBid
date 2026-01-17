@@ -8,6 +8,17 @@ import { parseObjectToItem, type MarketplaceItem } from "@/lib/sui-utils"
 import { Boxes, Wallet } from "lucide-react"
 import { ConnectWallet } from "@/components/connect-wallet"
 
+const NON_AUCTIONABLE_TYPES = [
+  "0x2::coin::Coin", // Coins don't have 'store'
+  "0x2::coin::CoinMetadata",
+  "0x2::package::UpgradeCap",
+  "0x2::dynamic_field::Field",
+]
+
+function isAuctionable(type: string): boolean {
+  return !NON_AUCTIONABLE_TYPES.some((nonAuctionable) => type.includes(nonAuctionable))
+}
+
 export default function MyItemsPage() {
   const account = useCurrentAccount()
 
@@ -21,8 +32,11 @@ export default function MyItemsPage() {
     { enabled: !!account },
   )
 
-  const items: MarketplaceItem[] =
+  const allItems: MarketplaceItem[] =
     data?.data?.map((obj) => parseObjectToItem(obj)).filter((item): item is MarketplaceItem => item !== null) ?? []
+
+  const auctionableItems = allItems.filter((item) => isAuctionable(item.type))
+  const nonAuctionableCount = allItems.length - auctionableItems.length
 
   if (!account) {
     return (
@@ -48,28 +62,33 @@ export default function MyItemsPage() {
           <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">Your On-Chain Objects</span>
         </div>
         <p className="text-muted-foreground">
-          View and manage objects you own on the Sui network. Accept bids from potential buyers.
+          View and manage objects you own on the Sui network. Create auctions to sell your items.
         </p>
       </div>
 
       {isLoading ? (
         <ItemGridSkeleton count={8} />
-      ) : items.length === 0 ? (
+      ) : auctionableItems.length === 0 ? (
         <EmptyState
           icon={Boxes}
-          title="No items found"
-          description="You don't own any items yet. Visit the marketplace to discover items or receive items from other users."
+          title="No auctionable items found"
+          description={
+            nonAuctionableCount > 0
+              ? `You have ${nonAuctionableCount} objects (like Coins) that cannot be auctioned. Mint or acquire NFTs to create auctions.`
+              : "You don't own any items yet. Visit the marketplace to discover items or receive items from other users."
+          }
           actionLabel="Browse Marketplace"
           actionHref="/"
         />
       ) : (
         <>
           <div className="mb-4 text-sm text-muted-foreground">
-            {items.length} {items.length === 1 ? "item" : "items"} found
+            {auctionableItems.length} auctionable {auctionableItems.length === 1 ? "item" : "items"} found
+            {nonAuctionableCount > 0 && ` (${nonAuctionableCount} non-auctionable objects hidden)`}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {items.map((item) => (
-              <ItemCard key={item.objectId} item={item} />
+            {auctionableItems.map((item) => (
+              <ItemCard key={item.objectId} item={item} showCreateAuction={true} linkPrefix="/my-items" />
             ))}
           </div>
         </>
