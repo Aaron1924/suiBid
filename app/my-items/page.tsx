@@ -6,7 +6,7 @@ import { ItemGridSkeleton } from "@/components/loading-skeleton"
 import { EmptyState } from "@/components/empty-state"
 import { parseObjectToItem, type MarketplaceItem } from "@/lib/sui-utils"
 import { Boxes, Wallet } from "lucide-react"
-import { ConnectButton } from "@mysten/dapp-kit"
+import { ConnectWallet } from "@/components/connect-wallet"
 
 export default function MyItemsPage() {
   const account = useCurrentAccount()
@@ -33,7 +33,7 @@ export default function MyItemsPage() {
           </div>
           <h1 className="text-2xl font-semibold mb-2">Connect Your Wallet</h1>
           <p className="text-muted-foreground mb-6 max-w-md">Connect your Sui wallet to view your on-chain items.</p>
-          <ConnectButton className="!bg-primary !text-primary-foreground !rounded-md !px-6 !py-3 !text-sm !font-medium hover:!bg-primary/90" />
+          <ConnectWallet />
         </div>
       </div>
     )
