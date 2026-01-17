@@ -1,4 +1,6 @@
 #[test_only]
+
+
 module suibid::auction_tests {
     use sui::test_scenario::{Self as ts};
     use sui::clock::{Self, Clock};
@@ -31,7 +33,7 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_create_auction() {
-        let seller = @0xSELLER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
         let mut scenario = ts::begin(seller);
 
         // Create clock
@@ -76,8 +78,8 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_place_first_bid() {
-        let seller = @0xSELLER;
-        let bidder_a = @0xBIDDER_A;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder_a = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -120,9 +122,9 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_accumulating_positions() {
-        let seller = @0xSELLER;
-        let bidder_a = @0xBIDDER_A;
-        let bidder_b = @0xBIDDER_B;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder_a = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let bidder_b = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -200,8 +202,8 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_end_auction_and_claim() {
-        let seller = @0xSELLER;
-        let winner = @0xWINNER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let winner = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -270,9 +272,9 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_loser_withdraw() {
-        let seller = @0xSELLER;
-        let winner = @0xWINNER;
-        let loser = @0xLOSER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let winner = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let loser = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -356,8 +358,8 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_BID_TOO_LOW)]
     fun test_bid_too_low() {
-        let seller = @0xSELLER;
-        let bidder = @0xBIDDER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -397,8 +399,8 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_AUCTION_ENDED)]
     fun test_cannot_bid_after_end_time() {
-        let seller = @0xSELLER;
-        let bidder = @0xBIDDER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -439,8 +441,8 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_IS_WINNER)]
     fun test_winner_cannot_withdraw() {
-        let seller = @0xSELLER;
-        let winner = @0xWINNER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let winner = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -497,9 +499,9 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_AUCTION_NOT_ACTIVE)]
     fun test_cannot_bid_on_inactive_auction() {
-        let seller = @0xSELLER;
-        let bidder_a = @0xBIDDER_A;
-        let bidder_b = @0xBIDDER_B;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder_a = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let bidder_b = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -559,9 +561,9 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_NOT_WINNER)]
     fun test_non_winner_cannot_claim() {
-        let seller = @0xSELLER;
-        let winner = @0xWINNER;
-        let loser = @0xLOSER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let winner = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let loser = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -629,8 +631,8 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_NOT_SELLER)]
     fun test_non_seller_cannot_reclaim() {
-        let seller = @0xSELLER;
-        let random_user = @0xRANDOM;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let random_user = @0xd7df693d17c2ee8eab659ba13f096ded7f390a27ea67a655c75ac212221b9702;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -676,9 +678,9 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_NO_POSITION)]
     fun test_cannot_withdraw_without_position() {
-        let seller = @0xSELLER;
-        let winner = @0xWINNER;
-        let random_user = @0xRANDOM;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let winner = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let random_user = @0xd7df693d17c2ee8eab659ba13f096ded7f390a27ea67a655c75ac212221b9702;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -735,7 +737,7 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_AUCTION_STILL_ACTIVE)]
     fun test_cannot_end_auction_early() {
-        let seller = @0xSELLER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -772,8 +774,8 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_AUCTION_STILL_ACTIVE)]
     fun test_cannot_claim_while_active() {
-        let seller = @0xSELLER;
-        let bidder = @0xBIDDER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -819,9 +821,9 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_AUCTION_STILL_ACTIVE)]
     fun test_cannot_withdraw_while_active() {
-        let seller = @0xSELLER;
-        let bidder_a = @0xBIDDER_A;
-        let bidder_b = @0xBIDDER_B;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder_a = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let bidder_b = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -877,7 +879,7 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_seller_reclaims_when_no_bids() {
-        let seller = @0xSELLER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -929,10 +931,10 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_multiple_losers_withdraw() {
-        let seller = @0xSELLER;
-        let winner = @0xWINNER;
-        let loser_a = @0xLOSER_A;
-        let loser_b = @0xLOSER_B;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let winner = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let loser_a = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
+        let loser_b = @0xd7df693d17c2ee8eab659ba13f096ded7f390a27ea67a655c75ac212221b9702;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -1043,9 +1045,9 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_BID_TOO_LOW)]
     fun test_second_bid_must_exceed_highest() {
-        let seller = @0xSELLER;
-        let bidder_a = @0xBIDDER_A;
-        let bidder_b = @0xBIDDER_B;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder_a = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let bidder_b = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -1094,9 +1096,9 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_NO_POSITION)]
     fun test_cannot_withdraw_twice() {
-        let seller = @0xSELLER;
-        let winner = @0xWINNER;
-        let loser = @0xLOSER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let winner = @0xd992f45d9b6cd9c862023ac1bef4ccf3c25808a2e75b8399fd7867503420a8c4;
+        let loser = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -1171,8 +1173,8 @@ module suibid::auction_tests {
     // ══════════════════════════════════════════════════════════════
     #[test]
     fun test_exact_minimum_bid_accepted() {
-        let seller = @0xSELLER;
-        let bidder = @0xBIDDER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
+        let bidder = @0xfbe4966fda06c82029f7c955b8b89bffbf51e206d17b2b241432d5bb7c410a98;
         let mut scenario = ts::begin(seller);
 
         // Setup
@@ -1215,7 +1217,7 @@ module suibid::auction_tests {
     #[test]
     #[expected_failure(abort_code = auction::E_AUCTION_NOT_ACTIVE)]
     fun test_cannot_end_auction_twice() {
-        let seller = @0xSELLER;
+        let seller = @0x616aaba7d23998cc99fb4c99cf772efcf8905de4f7667661e0dcc9ae096cbf09;
         let mut scenario = ts::begin(seller);
 
         // Setup
