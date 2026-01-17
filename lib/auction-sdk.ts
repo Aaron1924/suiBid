@@ -1,121 +1,238 @@
-import { Transaction } from "@mysten/sui/transactions";
-import { SUI_CLOCK_OBJECT_ID } from "@mysten/sui/utils";
+import { SuiClient } from "@mysten/sui/client";
+import { TransactionBlock } from "@mysten/sui/transactions";
+import { WalletContextState } from "@mysten/dapp-kit";
 
-export const MARKETPLACE_PACKAGE_ID = process.env.PACKAGE_ID ||"0x1b054c703bf2bf04ea78e35dc5d4b6b086aafb236c7017a222f62d5535753ccb";
-export const MODULE_NAME = "auction";
+// ──────────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────────
 
-/**
- * Tạo Transaction Block để mở một cuộc đấu giá mới.
- * Sử dụng cơ chế Shared Object để giữ Item.
- * 
- * @param itemType Loại của NFT (VD: "0xPackage::module::Hero")
- * @param itemId ID của NFT (Object ID) muốn bán
- * @param minBid Giá khởi điểm (MIST)
- * @param duration Thời gian đấu giá (ms)
- */
-export function createAuctionTx(itemType: string, itemId: string, minBid: bigint | number, duration: number) {
-  const tx = new Transaction();
+// TODO: Replace with your actual deployed package ID and module name.
+// You can find this in the `smart-contract/Published.toml` file after deployment.
+const PACKAGE_ID = "0x...YOUR_PACKAGE_ID";
+const AUCTION_MODULE = "auction";
 
-  tx.moveCall({
-    target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::create_auction`,
-    typeArguments: [itemType], // Truyền loại NFT vào Generic <T>
-    arguments: [
-      tx.object(itemId), // Truyền Object NFT vào (Move by value)
-      tx.pure.u64(minBid),
-      tx.pure.u64(duration),
-      tx.object(SUI_CLOCK_OBJECT_ID),
-    ],
-  });
+// ──────────────────────────────────────────────
+// TypeScript Interfaces
+// ──────────────────────────────────────────────
 
-  return tx;
+// Represents the on-chain 'Auction' struct.
+export interface Auction {
+    id: string;
+    item: string; // This will be the ID of the NFT or other item.
+    seller: string;
+    min_bid: number;
+    highest_bid: number;
+    highest_bidder: string | null;
+    end_time: number;
+    active: boolean;
 }
 
-/**
- * Tạo Transaction Block để đặt giá (Bid).
- * @param itemType Loại của NFT đang đấu giá
- * @param auctionId ID của phiên đấu giá
- * @param amount Số tiền muốn bid thêm
- * @param coinId (Optional) Coin ID
- */
-export function placeBidTx(itemType: string, auctionId: string, amount: bigint | number, coinId?: string) {
-  const tx = new Transaction();
-
-  const [coin] = tx.splitCoins(coinId ? tx.object(coinId) : tx.gas, [tx.pure.u64(amount)]);
-
-  tx.moveCall({
-    target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::place_bid`,
-    typeArguments: [itemType],
-    arguments: [
-      tx.object(auctionId),
-      coin,
-      tx.object(SUI_CLOCK_OBJECT_ID),
-    ],
-  });
-
-  return tx;
-}
+// ──────────────────────────────────────────────
+// Core SDK Functions
+// ──────────────────────────────────────────────
 
 /**
+<<<<<<< HEAD
+ * Creates a new auction for a given item.
+ * @param wallet - The connected wallet instance.
+ * @param item_id - The object ID of the item to be auctioned.
+ * @param itemType - The Move type of the item being auctioned (e.g., '0x...::nft::BidNFT').
+ * @param min_bid - The minimum starting bid in MIST.
+ * @param duration_ms - The duration of the auction in milliseconds.
+=======
  * Tạo Transaction Block để kết thúc đấu giá (Settlement).
  * NFT sẽ được chuyển từ Auction Object -> Winner.
  *
  * @param itemType Loại của NFT
  * @param auctionId ID phiên đấu giá
+>>>>>>> e9c5719ef813abd880f9d85bb017304ed820c44d
  */
-export function endAuctionTx(
-  itemType: string,
-  auctionId: string
+export async function createAuction(
+    wallet: WalletContextState,
+    item_id: string,
+    itemType: string,
+    min_bid: number,
+    duration_ms: number,
 ) {
-  const tx = new Transaction();
+    if (!wallet.account) {
+        throw new Error("Wallet not connected");
+    }
 
-  tx.moveCall({
-    target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::end_auction`,
-    typeArguments: [itemType],
-    arguments: [
-      tx.object(auctionId),
-      tx.object(SUI_CLOCK_OBJECT_ID),
-    ],
-  });
+    const txb = new TransactionBlock();
 
-  return tx;
+    txb.moveCall({
+        target: `${PACKAGE_ID}::${AUCTION_MODULE}::create_auction`,
+        arguments: [
+            txb.object(item_id),
+            txb.pure(min_bid, 'u64'),
+            txb.pure(duration_ms, 'u64'),
+            txb.object('0x6') // sui::clock::CLOCK
+        ],
+        typeArguments: [itemType],
+    });
+
+    return wallet.signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+    });
 }
 
 /**
- * Tạo Transaction Block để người dùng (không thắng) rút tiền về.
- * 
- * @param itemType Loại của NFT
- * @param auctionId ID phiên đấu giá
+ * Places a bid on an active auction.
+ * @param wallet - The connected wallet instance.
+ * @param suiClient - The SuiClient instance for fetching coins.
+ * @param auction_id - The object ID of the auction.
+ * @param bid_amount - The amount to bid in MIST.
  */
-export function withdrawTx(itemType: string, auctionId: string) {
-    const tx = new Transaction();
+export async function placeBid(
+    wallet: WalletContextState,
+    suiClient: SuiClient,
+    auction_id: string,
+    bid_amount: number,
+) {
+    if (!wallet.account) {
+        throw new Error("Wallet not connected");
+    }
 
-    tx.moveCall({
-        target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::withdraw`,
-        typeArguments: [itemType],
-        arguments: [
-            tx.object(auctionId)
-        ]
+    const txb = new TransactionBlock();
+
+    // Get a coin for the bid
+    const { data: coins } = await suiClient.getCoins({
+        owner: wallet.account.address,
+        coinType: '0x2::sui::SUI',
     });
 
-    return tx;
+    const [bid_coin] = txb.splitCoins(txb.object(coins[0].coinObjectId), [txb.pure(bid_amount)]);
+
+    txb.moveCall({
+        target: `${PACKAGE_ID}::${AUCTION_MODULE}::place_bid`,
+        arguments: [
+            txb.object(auction_id),
+            bid_coin,
+            txb.object('0x6') // sui::clock::CLOCK
+        ],
+        typeArguments: [ITEM_TYPE],
+    });
+
+    return wallet.signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+    });
 }
 
 /**
- * Tạo Transaction Block để Claim (Dành cho Winner và Seller).
- * 
- * @param itemType Loại của NFT
- * @param auctionId ID phiên đấu giá
+ * Ends an auction after its end_time has passed.
+ * @param wallet - The connected wallet instance.
+ * @param auction_id - The object ID of the auction to end.
  */
-export function claimTx(itemType: string, auctionId: string) {
-    const tx = new Transaction();
+export async function endAuction(
+    wallet: WalletContextState,
+    auction_id: string
+) {
+    if (!wallet.account) {
+        throw new Error("Wallet not connected");
+    }
 
-    tx.moveCall({
-        target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::claim`,
-        typeArguments: [itemType],
+    const txb = new TransactionBlock();
+
+    txb.moveCall({
+        target: `${PACKAGE_ID}::${AUCTION_MODULE}::end_auction`,
         arguments: [
-            tx.object(auctionId)
-        ]
+            txb.object(auction_id),
+            txb.object('0x6') // sui::clock::CLOCK
+        ],
+        typeArguments: [ITEM_TYPE],
     });
 
-    return tx;
+    return wallet.signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+    });
+}
+
+/**
+ * Claims the item (if winner) or the funds (if seller).
+ * @param wallet - The connected wallet instance.
+ * @param auction_id - The object ID of the ended auction.
+ */
+export async function claim(
+    wallet: WalletContextState,
+    auction_id: string
+) {
+    if (!wallet.account) {
+        throw new Error("Wallet not connected");
+    }
+
+    const txb = new TransactionBlock();
+
+    txb.moveCall({
+        target: `${PACKAGE_ID}::${AUCTION_MODULE}::claim`,
+        arguments: [
+            txb.object(auction_id)
+        ],
+        typeArguments: [ITEM_TYPE],
+    });
+
+    return wallet.signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+    });
+}
+
+/**
+ * Withdraws a bid for non-winning bidders after the auction has ended.
+ * @param wallet - The connected wallet instance.
+ * @param auction_id - The object ID of the ended auction.
+ */
+export async function withdraw(
+    wallet: WalletContextState,
+    auction_id: string
+) {
+    if (!wallet.account) {
+        throw new Error("Wallet not connected");
+    }
+
+    const txb = new TransactionBlock();
+
+    txb.moveCall({
+        target: `${PACKAGE_ID}::${AUCTION_MODULE}::withdraw`,
+        arguments: [
+            txb.object(auction_id)
+        ],
+        typeArguments: [ITEM_TYPE],
+    });
+
+    return wallet.signAndExecuteTransactionBlock({
+        transactionBlock: txb,
+    });
+}
+
+
+/**
+ * Fetches and parses the details of an auction object from the chain.
+ * @param suiClient - The SuiClient for interacting with the RPC endpoint.
+ * @param auction_id - The ID of the auction object to fetch.
+ * @returns A structured Auction object or null if not found.
+ */
+export async function getAuctionDetails(
+    suiClient: SuiClient,
+    auction_id: string
+): Promise<Auction | null> {
+    const response = await suiClient.getObject({
+        id: auction_id,
+        options: { showContent: true },
+    });
+
+    if (response.data?.content?.dataType !== 'moveObject') {
+        return null;
+    }
+
+    const fields = response.data.content.fields as any;
+
+    return {
+        id: fields.id.id,
+        item: fields.item.fields.id.id, // Assuming the item is an object with an ID
+        seller: fields.seller,
+        min_bid: parseInt(fields.min_bid, 10),
+        highest_bid: parseInt(fields.highest_bid, 10),
+        highest_bidder: fields.highest_bidder.fields.vec[0] || null, // Option<address> is a vector
+        end_time: parseInt(fields.end_time, 10),
+        active: fields.active,
+    };
 }
