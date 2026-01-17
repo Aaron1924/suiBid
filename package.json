@@ -4,12 +4,12 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "build:server": "tsc -p server/tsconfig.json",
     "dev": "next dev",
+    "dev:server": "nodemon --watch server --exec ts-node -P server/tsconfig.json server/app.ts",
     "lint": "eslint .",
     "start": "next start",
-    "build:server": "tsc -p server/tsconfig.json",
-    "start:server": "node dist-server/app.js",
-    "dev:server": "nodemon --watch server --exec ts-node -P server/tsconfig.json server/app.ts"
+    "start:server": "node dist-server/app.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
