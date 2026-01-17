@@ -13,7 +13,7 @@ export const SUI_CLOCK_OBJECT_ID = "0x6"
 export const AUCTION_ITEM_TYPE = "0x1b054c703bf2bf04ea78e35dc5d4b6b086aafb236c7017a222f62d5535753ccb::nft::SuiBidNFT"
 
 // Demo auction ID for marketplace display - replace with actual auction object ID
-export const DEMO_AUCTION_ID = "" // Leave empty or replace with a real auction ID
+export const DEMO_AUCTION_ID = "0xYOUR_AUCTION_OBJECT_ID_HERE" // Replace with actual auction object ID
 
 // Object type filters for fetching user items
 export const SUPPORTED_ITEM_TYPES = [
