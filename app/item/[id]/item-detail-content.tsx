@@ -17,6 +17,7 @@ import { ArrowLeft, ExternalLink, Package, User, Clock, Wallet, Store } from "lu
 import Link from "next/link"
 import { toast } from "sonner"
 import { ConnectButton } from "@mysten/dapp-kit"
+import { BidPositionIndicator } from "@/components/bid-position-indicator"
 
 export function ItemDetailContent() {
   const { id } = useParams<{ id: string }>()
@@ -339,6 +340,10 @@ export function ItemDetailContent() {
                 </p>
               </CardContent>
             </Card>
+          )}
+
+          {isFromMarketplace && (
+            <BidPositionIndicator userAddress={account?.address} bids={mockBids} />
           )}
 
           {isFromMarketplace && mockBids.length > 0 && (
