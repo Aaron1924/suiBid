@@ -41,7 +41,7 @@ export interface Bid {
 
 export interface ParsedAuction {
   id: string
-  item: string
+  item: any // Embedded item object (not an ID), contains .fields with NFT data
   seller: string
   minBid: number
   highestBid: number
@@ -73,15 +73,24 @@ export function parseObjectToItem(object: any): MarketplaceItem | null {
 
 export function parseAuctionObject(object: any): ParsedAuction | null {
   try {
-    const content = object.data?.content
-    if (!content || content.dataType !== "moveObject") return null
+    // Handle both direct object and nested data structure
+    const content = object?.content || object?.data?.content
+    if (!content || content.dataType !== "moveObject") {
+      console.log("[parseAuctionObject] No valid content found:", JSON.stringify(object, null, 2))
+      return null
+    }
 
     const fields = content.fields as any
-    if (!fields) return null
+    if (!fields) {
+      console.log("[parseAuctionObject] No fields found in content")
+      return null
+    }
+
+    console.log("[parseAuctionObject] Fields:", JSON.stringify(fields, null, 2))
 
     return {
-      id: fields.id?.id || object.data?.objectId,
-      item: fields.item?.fields?.id?.id || fields.item || "",
+      id: fields.id?.id || object?.objectId || object?.data?.objectId || "",
+      item: fields.item, // Keep full embedded item object for NFT data extraction
       seller: fields.seller || "",
       minBid: Number.parseInt(fields.min_bid || "0", 10),
       highestBid: Number.parseInt(fields.highest_bid || "0", 10),
@@ -89,7 +98,8 @@ export function parseAuctionObject(object: any): ParsedAuction | null {
       endTime: Number.parseInt(fields.end_time || "0", 10),
       active: fields.active ?? true,
     }
-  } catch {
+  } catch (e) {
+    console.error("[parseAuctionObject] Error:", e)
     return null
   }
 }

@@ -26,7 +26,7 @@ import {
 import { formatAddress, formatSui } from "@/lib/sui-utils"
 import { Wallet, LogOut, Copy, ExternalLink, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function ConnectWallet() {
   const account = useCurrentAccount()
@@ -34,8 +34,24 @@ export function ConnectWallet() {
   const { mutate: connect, isPending } = useConnectWallet()
   const wallets = useWallets()
   const [open, setOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Only render dialogs/dropdowns after mount to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const { data: balance } = useSuiClientQuery("getBalance", { owner: account?.address ?? "" }, { enabled: !!account })
+
+  // Show placeholder button during SSR to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <Button className="gap-2" disabled>
+        <Wallet className="h-4 w-4" />
+        Connect Wallet
+      </Button>
+    )
+  }
 
   if (!account) {
     return (

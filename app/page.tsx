@@ -72,13 +72,25 @@ function AuctionItem({ id }: { id: string }) {
     )
   }
 
+  // Parse embedded NFT from auction.item (could be direct fields or wrapped in Option)
+  let itemFields = parsedAuction.item?.fields;
+  if (parsedAuction.item?.fields?.vec) {
+    itemFields = parsedAuction.item.fields.vec[0]?.fields;
+  }
+
+  const nftName = itemFields?.name || `Auction ${parsedAuction.id.slice(0, 8)}...`;
+  const nftDescription = itemFields?.description || "No description";
+  const nftImageUrl = typeof itemFields?.image_url === 'string'
+    ? itemFields.image_url
+    : itemFields?.image_url?.url || null;
+
   const listingForCard: DisplayableListing = {
     id: parsedAuction.id,
-    name: parsedAuction.item.name,
-    description: parsedAuction.item.description,
-    imageUrl: parsedAuction.item.imageUrl,
+    name: nftName,
+    description: nftDescription,
+    imageUrl: nftImageUrl,
     seller: parsedAuction.seller,
-    currentBid: parsedAuction.highestBid,
+    currentBid: parsedAuction.highestBid.toString(),
     bidCount: 0,
   }
 

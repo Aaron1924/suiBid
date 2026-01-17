@@ -1,15 +1,6 @@
 import { SuiClient } from "@mysten/sui/client";
-import { TransactionBlock } from "@mysten/sui/transactions";
-import { WalletContextState } from "@mysten/dapp-kit";
-
-// ──────────────────────────────────────────────
-// Constants
-// ──────────────────────────────────────────────
-
-// TODO: Replace with your actual deployed package ID.
-// This should be the same as the package ID for your auction module if deployed together.
-const PACKAGE_ID = "0x...YOUR_PACKAGE_ID";
-const NFT_MODULE = "nft";
+import { Transaction } from "@mysten/sui/transactions";
+import { SUIBID_PACKAGE_ID, NFT_MODULE } from "./constants";
 
 // ──────────────────────────────────────────────
 // TypeScript Interfaces
@@ -29,64 +20,165 @@ export interface BidNFT {
 // ──────────────────────────────────────────────
 
 /**
- * Mints a new BidNFT and transfers it to the creator.
- * @param wallet - The connected wallet instance.
+ * Creates a transaction to mint a new BidNFT.
+ * Based on smart contract: suibid::nft::mint_and_transfer
+ *
  * @param name - The name of the NFT.
  * @param description - The description of the NFT.
- * @param image_url - The URL for the NFT's image.
+ * @param imageUrl - The URL for the NFT's image.
+ * @returns Transaction object ready to be signed.
  */
-export async function mintAndTransferNFT(
-    wallet: WalletContextState,
+export function createMintNFTTransaction(
     name: string,
     description: string,
-    image_url: string,
-) {
-    if (!wallet.account) {
-        throw new Error("Wallet not connected");
-    }
+    imageUrl: string,
+): Transaction {
+    const tx = new Transaction();
 
-    const txb = new TransactionBlock();
-
-    txb.moveCall({
-        target: `${PACKAGE_ID}::${NFT_MODULE}::mint_and_transfer`,
+    tx.moveCall({
+        target: `${SUIBID_PACKAGE_ID}::${NFT_MODULE}::mint_and_transfer`,
         arguments: [
-            txb.pure(Array.from(new TextEncoder().encode(name)), 'vector<u8>'),
-            txb.pure(Array.from(new TextEncoder().encode(description)), 'vector<u8>'),
-            txb.pure(Array.from(new TextEncoder().encode(image_url)), 'vector<u8>'),
+            tx.pure.vector("u8", Array.from(new TextEncoder().encode(name))),
+            tx.pure.vector("u8", Array.from(new TextEncoder().encode(description))),
+            tx.pure.vector("u8", Array.from(new TextEncoder().encode(imageUrl))),
         ],
     });
 
-    return wallet.signAndExecuteTransactionBlock({
-        transactionBlock: txb,
-    });
+    return tx;
+}
+
+/**
+ * Mints a new BidNFT (key + store) and transfers it to the connected wallet.
+ * The NFT is an address-owned object that can be used in auctions.
+ *
+ * Smart contract function: suibid::nft::mint_and_transfer
+ * NFT abilities: key + store (can be transferred and stored in other objects)
+ *
+ * @param signAndExecute - The signAndExecuteTransaction function from dapp-kit useSignAndExecuteTransaction hook.
+ * @param name - The name of the NFT.
+ * @param description - The description of the NFT.
+ * @param imageUrl - The URL for the NFT's image.
+ * @returns Promise with the transaction result containing digest.
+ *
+ * @example
+ * ```tsx
+ * const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+ *
+ * const result = await mintNFT(
+ *   signAndExecute,
+ *   "My NFT",
+ *   "A cool NFT",
+ *   "https://example.com/image.png"
+ * );
+ * console.log("Transaction digest:", result.digest);
+ * ```
+ */
+export async function mintNFT(
+    signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>,
+    name: string,
+    description: string,
+    imageUrl: string,
+): Promise<{ digest: string }> {
+    const tx = createMintNFTTransaction(name, description, imageUrl);
+    return signAndExecute({ transaction: tx });
+}
+
+/**
+ * Gets the full type string for BidNFT.
+ * Use this when calling auction functions that require Item type argument.
+ *
+ * @returns The full type path: {PACKAGE_ID}::nft::BidNFT
+ */
+export function getBidNFTType(): string {
+    return `${SUIBID_PACKAGE_ID}::${NFT_MODULE}::BidNFT`;
 }
 
 /**
  * Fetches and parses the details of a BidNFT object from the chain.
  * @param suiClient - The SuiClient for interacting with the RPC endpoint.
- * @param nft_id - The ID of the NFT object to fetch.
+ * @param nftId - The ID of the NFT object to fetch.
  * @returns A structured BidNFT object or null if not found.
  */
 export async function getNFTDetails(
     suiClient: SuiClient,
-    nft_id: string
+    nftId: string
 ): Promise<BidNFT | null> {
-    const response = await suiClient.getObject({
-        id: nft_id,
-        options: { showContent: true },
-    });
+    try {
+        const response = await suiClient.getObject({
+            id: nftId,
+            options: { showContent: true },
+        });
 
-    if (response.data?.content?.dataType !== 'moveObject' || response.data.content.type?.indexOf('BidNFT') === -1) {
+        if (
+            response.data?.content?.dataType !== "moveObject" ||
+            !response.data.content.type?.includes("BidNFT")
+        ) {
+            return null;
+        }
+
+        const fields = response.data.content.fields as any;
+
+        // Handle image_url which is a Url type in Move (stored as string or object with .url)
+        const imageUrl =
+            typeof fields.image_url === "string"
+                ? fields.image_url
+                : fields.image_url?.url || null;
+
+        return {
+            id: fields.id?.id || response.data.objectId,
+            name: fields.name || "Unnamed NFT",
+            description: fields.description || "",
+            image_url: imageUrl || "",
+            creator: fields.creator || "",
+        };
+    } catch (error) {
+        console.error("[getNFTDetails] Error:", error);
         return null;
     }
+}
 
-    const fields = response.data.content.fields as any;
+/**
+ * Fetches all BidNFTs owned by a specific address.
+ * @param suiClient - The SuiClient for interacting with the RPC endpoint.
+ * @param ownerAddress - The address to fetch NFTs for.
+ * @returns Array of BidNFT objects.
+ */
+export async function getOwnedNFTs(
+    suiClient: SuiClient,
+    ownerAddress: string
+): Promise<BidNFT[]> {
+    try {
+        const nftType = `${SUIBID_PACKAGE_ID}::${NFT_MODULE}::BidNFT`;
 
-    return {
-        id: fields.id.id,
-        name: fields.name,
-        description: fields.description,
-        image_url: fields.image_url.url,
-        creator: fields.creator,
-    };
+        const response = await suiClient.getOwnedObjects({
+            owner: ownerAddress,
+            filter: { StructType: nftType },
+            options: { showContent: true },
+        });
+
+        const nfts: BidNFT[] = [];
+
+        for (const item of response.data) {
+            if (item.data?.content?.dataType === "moveObject") {
+                const fields = item.data.content.fields as any;
+                const imageUrl =
+                    typeof fields.image_url === "string"
+                        ? fields.image_url
+                        : fields.image_url?.url || null;
+
+                nfts.push({
+                    id: fields.id?.id || item.data.objectId,
+                    name: fields.name || "Unnamed NFT",
+                    description: fields.description || "",
+                    image_url: imageUrl || "",
+                    creator: fields.creator || "",
+                });
+            }
+        }
+
+        return nfts;
+    } catch (error) {
+        console.error("[getOwnedNFTs] Error:", error);
+        return [];
+    }
 }

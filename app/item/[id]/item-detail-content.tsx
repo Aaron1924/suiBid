@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useCurrentAccount, useSuiClient, useSuiClientQuery, useSignAndExecuteTransaction } from "@mysten/dapp-kit"
+import { useQueryClient } from "@tanstack/react-query"
 import { Transaction } from "@mysten/sui/transactions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -50,7 +51,16 @@ export function ItemDetailContent() {
   const { id } = useParams<{ id: string }>()
   const account = useCurrentAccount()
   const suiClient = useSuiClient();
-  const { mutate: signAndExecute } = useSignAndExecuteTransaction()
+  const queryClient = useQueryClient();
+  const { mutateAsync: signAndExecuteAsync } = useSignAndExecuteTransaction()
+
+  // Function to refresh wallet balance after transactions
+  const refreshWalletBalance = () => {
+    if (account?.address) {
+      // Invalidate all getBalance queries for this address
+      queryClient.invalidateQueries({ queryKey: ["getBalance"] });
+    }
+  };
 
   // State for the bid input and transaction status
   const [bidAmount, setBidAmount] = useState("")
@@ -59,6 +69,13 @@ export function ItemDetailContent() {
   const [errorMessage, setErrorMessage] = useState<string>()
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [userPosition, setUserPosition] = useState<number>(0);
+  const [bidHistory, setBidHistory] = useState<Array<{
+    bidder: string;
+    bidAmount: number;
+    totalPosition: number;
+    timestamp?: number;
+    txDigest?: string;
+  }>>([]);
 
   // --- Data Fetching ---
   const {
@@ -68,59 +85,95 @@ export function ItemDetailContent() {
     refetch: refetchAuction,
   } = useSuiClientQuery("getObject", {
     id,
-    options: { showContent: true, showOwner: true },
+    options: { showContent: true, showOwner: true, showType: true },
   });
 
   const parsedAuction: SdkAuction | null = auctionObjectData?.data
-    ? {
-      id: auctionObjectData.data.objectId,
-      item: (auctionObjectData.data.content as any).fields.item, // Direct object ID of the NFT
-      seller: (auctionObjectData.data.content as any).fields.seller,
-      min_bid: parseInt((auctionObjectData.data.content as any).fields.min_bid, 10),
-      highest_bid: parseInt((auctionObjectData.data.content as any).fields.highest_bid, 10),
-      highest_bidder: (auctionObjectData.data.content as any).fields.highest_bidder.fields.vec[0] || null,
-      end_time: parseInt((auctionObjectData.data.content as any).fields.end_time, 10),
-      active: (auctionObjectData.data.content as any).fields.active,
-    }
+    ? (() => {
+      const fieldsAuction = (auctionObjectData.data.content as any)?.fields;
+      if (!fieldsAuction) return null;
+      return {
+        id: auctionObjectData.data.objectId,
+        item: fieldsAuction.item, // This is the embedded item object, not an ID
+        seller: fieldsAuction.seller,
+        min_bid: parseInt(fieldsAuction.min_bid || "0", 10),
+        highest_bid: parseInt(fieldsAuction.highest_bid || "0", 10),
+        highest_bidder: fieldsAuction.highest_bidder?.fields?.vec?.[0] || null,
+        end_time: parseInt(fieldsAuction.end_time || "0", 10),
+        active: fieldsAuction.active ?? true,
+      };
+    })()
     : null;
 
-  const {
-    data: nftObjectData,
-    isLoading: isLoadingNFT,
-    isError: isErrorNFT,
-    refetch: refetchNFT,
-  } = useSuiClientQuery("getObject", {
-    id: parsedAuction?.item || "",
-    options: { showContent: true },
-    enabled: !!parsedAuction?.item, // Only fetch NFT if auction data is available
-  });
+  // Parse NFT directly from auction.item (embedded in auction via Option<Item>, not a separate object)
+  const parsedNFT: BidNFT | null = parsedAuction?.item
+    ? (() => {
+      // Item could be directly in .fields or wrapped in Option (check .fields.vec[0])
+      let itemFields = parsedAuction.item?.fields;
 
-  const parsedNFT: BidNFT | null = nftObjectData?.data
-    ? {
-      id: nftObjectData.data.objectId,
-      name: (nftObjectData.data.content as any).fields.name,
-      description: (nftObjectData.data.content as any).fields.description,
-      image_url: (nftObjectData.data.content as any).fields.image_url.url,
-      creator: (nftObjectData.data.content as any).fields.creator,
-    }
+      // If item is wrapped in Option<Item>, it will be in .fields.vec[0]
+      if (parsedAuction.item?.fields?.vec) {
+        itemFields = parsedAuction.item.fields.vec[0]?.fields;
+      }
+
+      if (!itemFields) return null;
+
+      // Handle image_url which could be a string, an object with .url, or null
+      const imageUrl = typeof itemFields.image_url === 'string'
+        ? itemFields.image_url
+        : itemFields.image_url?.url || itemFields.url || null;
+      return {
+        id: itemFields.id?.id || "",
+        name: itemFields.name || "Unnamed NFT",
+        description: itemFields.description || "No description",
+        image_url: imageUrl,
+        creator: itemFields.creator || "",
+      };
+    })()
     : null;
 
 
-  const auctionItemType = `${SUIBID_PACKAGE_ID}::${NFT_MODULE}::BidNFT`; // Explicitly define the item type
+  // Extract actual item type from auction object (could be BidNFT, Blob, or other types)
+  // Method 1: Get from item.type field directly
+  // Method 2: Parse from auction object's type: "0x...::auction::Auction<ITEM_TYPE>"
+  const getItemTypeFromAuction = (): string => {
+    // Try to get from item.type
+    if (parsedAuction?.item?.type) {
+      return parsedAuction.item.type;
+    }
+
+    // Try to parse from auction object type: Auction<ItemType>
+    const auctionType = (auctionObjectData?.data?.content as any)?.type;
+    if (auctionType) {
+      const match = auctionType.match(/<(.+)>/);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+
+    // Fallback to BidNFT
+    return `${SUIBID_PACKAGE_ID}::${NFT_MODULE}::BidNFT`;
+  };
+  const auctionItemType = getItemTypeFromAuction();
+  console.log("[ItemDetail] Extracted item type:", auctionItemType);
 
   // Fetch user's current bid position
   const { data: userPositionData, refetch: refetchUserPosition } = useSuiClientQuery(
     "devInspectTransactionBlock",
     {
       sender: account?.address || "0x0", // Use a dummy address if not connected
-      transactionBlock: new Transaction().moveCall({
-        target: `${SUIBID_PACKAGE_ID}::${AUCTION_MODULE}::get_position`,
-        arguments: [
-          new Transaction().object(id),
-          new Transaction().pure(account?.address || "0x0", 'address'),
-        ],
-        typeArguments: [auctionItemType],
-      }),
+      transactionBlock: (() => {
+        const tx = new Transaction();
+        tx.moveCall({
+          target: `${SUIBID_PACKAGE_ID}::${AUCTION_MODULE}::get_position`,
+          arguments: [
+            tx.object(id),
+            tx.pure.address(account?.address || "0x0"),
+          ],
+          typeArguments: [auctionItemType],
+        });
+        return tx;
+      })(),
     },
     {
       enabled: !!account?.address && !!parsedAuction?.id,
@@ -142,6 +195,51 @@ export function ItemDetailContent() {
       setUserPosition(userPositionData);
     }
   }, [userPositionData]);
+
+  // Fetch bid history from on-chain events
+  const fetchBidHistory = async () => {
+    if (!id || !SUIBID_PACKAGE_ID) return;
+
+    try {
+      const events = await suiClient.queryEvents({
+        query: {
+          MoveEventType: `${SUIBID_PACKAGE_ID}::${AUCTION_MODULE}::BidPlaced`,
+        },
+        limit: 50,
+        order: "descending",
+      });
+
+      // Filter events for this specific auction and parse them
+      const bids = events.data
+        .filter((event: any) => {
+          const parsedJson = event.parsedJson as any;
+          return parsedJson?.auction_id === id;
+        })
+        .map((event: any) => {
+          const parsedJson = event.parsedJson as any;
+          return {
+            bidder: parsedJson.bidder,
+            bidAmount: Number(parsedJson.bid_amount),
+            totalPosition: Number(parsedJson.total_position),
+            timestamp: Number(event.timestampMs),
+            txDigest: event.id?.txDigest,
+          };
+        });
+
+      setBidHistory(bids);
+    } catch (error) {
+      console.error("[BidHistory] Failed to fetch bid events:", error);
+    }
+  };
+
+  // Refetch bid history function for use after placing bids
+  const refetchBidHistory = () => {
+    fetchBidHistory();
+  };
+
+  useEffect(() => {
+    fetchBidHistory();
+  }, [id, SUIBID_PACKAGE_ID]);
 
   // Update time remaining every second
   useEffect(() => {
@@ -180,16 +278,27 @@ export function ItemDetailContent() {
 
     try {
       const bidInMist = suiToMist(amount);
+      console.log("[PlaceBid] Using itemType:", auctionItemType);
+      console.log("[PlaceBid] Auction ID:", parsedAuction.id);
+      console.log("[PlaceBid] Bid amount (MIST):", bidInMist.toString());
+
       const result = await placeBid(
-        { ...account, signAndExecuteTransactionBlock: signAndExecute } as any, // Cast to match WalletContextState
+        { ...account, signAndExecuteTransaction: signAndExecuteAsync } as any, // Cast to match WalletContextState
         suiClient,
         parsedAuction.id,
         auctionItemType,
         bidInMist,
       );
 
+      console.log("[PlaceBid] Result:", result);
+      setTxDigest(result?.digest);
+
+      // Wait for transaction to be finalized before refetching
+      if (result?.digest) {
+        await suiClient.waitForTransaction({ digest: result.digest });
+      }
+
       setTxState("success");
-      setTxDigest(result.digest);
       setBidAmount("");
       toast.success("Bid placed successfully!", {
         action: {
@@ -199,6 +308,8 @@ export function ItemDetailContent() {
       });
       refetchAuction(); // Refetch auction data to show new highest bid
       refetchUserPosition(); // Refetch user position
+      refetchBidHistory(); // Refetch bid history
+      refreshWalletBalance(); // Refresh wallet balance
     } catch (error: any) {
       setTxState("error");
       setErrorMessage(error.message);
@@ -220,13 +331,19 @@ export function ItemDetailContent() {
 
     try {
       const result = await sdkEndAuction(
-        { ...account, signAndExecuteTransactionBlock: signAndExecute } as any,
+        { ...account, signAndExecuteTransaction: signAndExecuteAsync } as any,
         parsedAuction.id,
         auctionItemType,
       );
 
-      setTxState("success");
       setTxDigest(result.digest);
+
+      // Wait for transaction to be finalized
+      if (result?.digest) {
+        await suiClient.waitForTransaction({ digest: result.digest });
+      }
+
+      setTxState("success");
       toast.success("Auction ended successfully!", {
         action: {
           label: "View on Explorer",
@@ -234,6 +351,7 @@ export function ItemDetailContent() {
         },
       });
       refetchAuction();
+      refreshWalletBalance();
     } catch (error: any) {
       setTxState("error");
       setErrorMessage(error.message);
@@ -249,13 +367,19 @@ export function ItemDetailContent() {
 
     try {
       const result = await sdkClaim(
-        { ...account, signAndExecuteTransactionBlock: signAndExecute } as any,
+        { ...account, signAndExecuteTransaction: signAndExecuteAsync } as any,
         parsedAuction.id,
         auctionItemType,
       );
 
-      setTxState("success");
       setTxDigest(result.digest);
+
+      // Wait for transaction to be finalized
+      if (result?.digest) {
+        await suiClient.waitForTransaction({ digest: result.digest });
+      }
+
+      setTxState("success");
       toast.success("Item claimed / funds received successfully!", {
         action: {
           label: "View on Explorer",
@@ -263,6 +387,7 @@ export function ItemDetailContent() {
         },
       });
       refetchAuction();
+      refreshWalletBalance();
     } catch (error: any) {
       setTxState("error");
       setErrorMessage(error.message);
@@ -278,13 +403,19 @@ export function ItemDetailContent() {
 
     try {
       const result = await sdkWithdraw(
-        { ...account, signAndExecuteTransactionBlock: signAndExecute } as any,
+        { ...account, signAndExecuteTransaction: signAndExecuteAsync } as any,
         parsedAuction.id,
         auctionItemType,
       );
 
-      setTxState("success");
       setTxDigest(result.digest);
+
+      // Wait for transaction to be finalized
+      if (result?.digest) {
+        await suiClient.waitForTransaction({ digest: result.digest });
+      }
+
+      setTxState("success");
       toast.success("Bid withdrawn successfully!", {
         action: {
           label: "View on Explorer",
@@ -293,6 +424,7 @@ export function ItemDetailContent() {
       });
       refetchAuction();
       refetchUserPosition();
+      refreshWalletBalance();
     } catch (error: any) {
       setTxState("error");
       setErrorMessage(error.message);
@@ -301,11 +433,19 @@ export function ItemDetailContent() {
   };
 
   // --- Render States ---
-  if (isLoadingAuction || isLoadingNFT) {
+  if (isLoadingAuction) {
     return <ItemDetailSkeleton />;
   }
 
-  if (isErrorAuction || !parsedAuction || isErrorNFT || !parsedNFT) {
+  // Debug logging
+  if (!parsedAuction) {
+    console.log("[ItemDetail] Auction parsing failed:", { auctionObjectData, isErrorAuction });
+  }
+  if (!parsedNFT && parsedAuction) {
+    console.log("[ItemDetail] NFT parsing failed - item data:", parsedAuction.item);
+  }
+
+  if (isErrorAuction || !parsedAuction || !parsedNFT) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
@@ -357,7 +497,7 @@ export function ItemDetailContent() {
             <div className="text-sm text-muted-foreground mb-1">Current Highest Bid</div>
             <div className="text-3xl font-bold text-primary flex items-center gap-2">
               <Gavel className="h-6 w-6" />
-              <span>{formatSui(mistToSui(parsedAuction.highest_bid))} SUI</span>
+              <span>{formatSui(parsedAuction.highest_bid.toString())} SUI</span>
             </div>
             {parsedAuction.highest_bidder && (
                 <div className="text-sm text-muted-foreground mt-1">
@@ -414,7 +554,12 @@ export function ItemDetailContent() {
 
           {/* Bid Position Indicator */}
           {account?.address && hasBidPosition && (
-            <BidPositionIndicator userAddress={account.address} userPosition={userPosition} />
+            <BidPositionIndicator
+              userAddress={account.address}
+              userPosition={userPosition}
+              highestBid={parsedAuction?.highest_bid}
+              highestBidder={parsedAuction?.highest_bidder}
+            />
           )}
 
           {/* Place Bid UI */}
@@ -486,7 +631,7 @@ export function ItemDetailContent() {
                   {/* Withdraw Button (Non-winning bidder) */}
                   {!isAuctionActive && hasBidPosition && !isWinner && (
                     <Button onClick={handleWithdraw} disabled={txState === "pending"} variant="outline">
-                      {txState === "pending" ? "Withdrawing..." : `Withdraw ${formatSui(mistToSui(userPosition))} SUI Bid`}
+                      {txState === "pending" ? "Withdrawing..." : `Withdraw ${formatSui(userPosition.toString())} SUI Bid`}
                     </Button>
                   )}
 
@@ -499,11 +644,39 @@ export function ItemDetailContent() {
             </CardContent>
           </Card>
           
-          {/* Bid History - currently a placeholder */}
+          {/* Bid History */}
           <Card>
             <CardHeader><CardTitle className="text-lg">Bid History</CardTitle></CardHeader>
             <CardContent>
-              <p>Live bid history coming soon.</p>
+              {bidHistory.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No bids yet. Be the first to bid!</p>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {bidHistory.map((bid, index) => (
+                    <div key={`${bid.txDigest}-${index}`} className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg">
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-mono text-sm">
+                            {formatAddress(bid.bidder, 6)}
+                            {bid.bidder === account?.address && <Badge variant="outline" className="ml-2 text-xs">You</Badge>}
+                            {bid.bidder === parsedAuction?.highest_bidder && <Badge className="ml-2 text-xs bg-green-500">Leading</Badge>}
+                          </span>
+                        </div>
+                        {bid.timestamp && (
+                          <span className="text-xs text-muted-foreground mt-1">
+                            {new Date(bid.timestamp).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-primary">+{formatSui(bid.bidAmount.toString())} SUI</div>
+                        <div className="text-xs text-muted-foreground">Position: {formatSui(bid.totalPosition.toString())} SUI</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -1,6 +1,6 @@
 // Contract addresses - replace with your actual contract addresses
-export const SUIBID_PACKAGE_ID =
-  process.env.PACKAGE_ID || "0x1b054c703bf2bf04ea78e35dc5d4b6b086aafb236c7017a222f62d5535753ccb"
+// NEXT_PUBLIC_ prefix required for client-side access in Next.js
+export const SUIBID_PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID
 
 export const MARKETPLACE_MODULE = "marketplace"
 export const AUCTION_MODULE = "auction"

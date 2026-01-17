@@ -3,9 +3,9 @@
 "use client";
 
 import { useState } from "react";
-import { useWallet } from "@mysten/dapp-kit";
+import { useCurrentAccount, useSignAndExecuteTransaction } from "@mysten/dapp-kit";
 import { PlusIcon } from "@radix-ui/react-icons";
-import { toast } from "sonner"; // Assuming you have sonner for toasts
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,10 +19,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { mintAndTransferNFT } from "@/lib/nft-sdk";
-import { TransactionStatus, type TransactionState } from "./transaction-status"; // Adjust path as needed
+import { mintNFT } from "@/lib/nft-sdk";
+import { TransactionStatus, type TransactionState } from "./transaction-status";
 
-export function MintNFTDialog() {
+interface MintNFTDialogProps {
+  onSuccess?: () => void;
+}
+
+export function MintNFTDialog({ onSuccess }: MintNFTDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -31,12 +35,13 @@ export function MintNFTDialog() {
   const [txDigest, setTxDigest] = useState<string>();
   const [errorMessage, setErrorMessage] = useState<string>();
 
-  const wallet = useWallet();
+  const account = useCurrentAccount();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
 
   const handleMintNFT = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!wallet.connected) {
+    if (!account) {
       toast.error("Please connect your wallet first.");
       return;
     }
@@ -45,8 +50,9 @@ export function MintNFTDialog() {
     setErrorMessage(undefined);
 
     try {
-      const mintResult = await mintAndTransferNFT(
-        wallet,
+      // Mint NFT with key + store abilities - automatically sent to connected wallet
+      const mintResult = await mintNFT(
+        signAndExecute,
         name,
         description,
         imageUrl,
@@ -61,13 +67,15 @@ export function MintNFTDialog() {
           onClick: () => window.open(`https://suiscan.xyz/testnet/tx/${mintResult.digest}`, "_blank"),
         },
       });
-      // Optionally reset form and close dialog after a delay
+      // Reset form and close dialog after a delay
       setTimeout(() => {
         setIsOpen(false);
         setName("");
         setDescription("");
         setImageUrl("");
         setTxState("idle");
+        // Callback to refresh the items list
+        onSuccess?.();
       }, 2000);
 
     } catch (error: any) {
@@ -91,7 +99,8 @@ export function MintNFTDialog() {
         <DialogHeader>
           <DialogTitle>Mint New NFT</DialogTitle>
           <DialogDescription>
-            Create a new unique NFT to use in auctions or keep in your wallet.
+            Create a new BidNFT (key + store) that will be sent to your wallet.
+            This NFT can be used in auctions as an address-owned object.
           </DialogDescription>
         </DialogHeader>
 

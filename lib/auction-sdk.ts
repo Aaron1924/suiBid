@@ -19,7 +19,7 @@ export interface Auction {
 
 interface WalletContextState {
   address: string
-  signAndExecuteTransactionBlock: (params: { transactionBlock: Transaction }) => Promise<{ digest: string }>
+  signAndExecuteTransaction: (params: { transaction: Transaction }) => Promise<{ digest: string }>
 }
 
 // ──────────────────────────────────────────────
@@ -126,7 +126,7 @@ export async function placeBid(
   bidAmount: number | bigint,
 ): Promise<{ digest: string }> {
   const tx = placeBidTx(auctionId, bidAmount, itemType)
-  return wallet.signAndExecuteTransactionBlock({ transactionBlock: tx })
+  return wallet.signAndExecuteTransaction({ transaction: tx })
 }
 
 /**
@@ -138,7 +138,7 @@ export async function endAuction(
   itemType: string,
 ): Promise<{ digest: string }> {
   const tx = settleAuctionTx(auctionId, itemType)
-  return wallet.signAndExecuteTransactionBlock({ transactionBlock: tx })
+  return wallet.signAndExecuteTransaction({ transaction: tx })
 }
 
 /**
@@ -150,7 +150,7 @@ export async function claim(
   itemType: string,
 ): Promise<{ digest: string }> {
   const tx = claimTx(auctionId, itemType)
-  return wallet.signAndExecuteTransactionBlock({ transactionBlock: tx })
+  return wallet.signAndExecuteTransaction({ transaction: tx })
 }
 
 /**
@@ -162,5 +162,5 @@ export async function withdraw(
   itemType: string,
 ): Promise<{ digest: string }> {
   const tx = withdrawTx(auctionId, itemType)
-  return wallet.signAndExecuteTransactionBlock({ transactionBlock: tx })
+  return wallet.signAndExecuteTransaction({ transaction: tx })
 }

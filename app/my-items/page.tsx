@@ -4,6 +4,7 @@ import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit"
 import { ItemCard } from "@/components/item-card"
 import { ItemGridSkeleton } from "@/components/loading-skeleton"
 import { EmptyState } from "@/components/empty-state"
+import { MintNFTDialog } from "@/components/mint-nft-dialog"
 import { parseObjectToItem, type MarketplaceItem } from "@/lib/sui-utils"
 import { Boxes, Wallet } from "lucide-react"
 import { ConnectWallet } from "@/components/connect-wallet"
@@ -22,7 +23,7 @@ function isAuctionable(type: string): boolean {
 export default function MyItemsPage() {
   const account = useCurrentAccount()
 
-  const { data, isLoading, error } = useSuiClientQuery(
+  const { data, isLoading, error, refetch } = useSuiClientQuery(
     "getOwnedObjects",
     {
       owner: account?.address ?? "",
@@ -56,10 +57,13 @@ export default function MyItemsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Boxes className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold">My Items</h1>
-          <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">Your On-Chain Objects</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Boxes className="h-6 w-6 text-primary" />
+            <h1 className="text-3xl font-bold">My Items</h1>
+            <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">Your On-Chain Objects</span>
+          </div>
+          <MintNFTDialog onSuccess={() => refetch()} />
         </div>
         <p className="text-muted-foreground">
           View and manage objects you own on the Sui network. Create auctions to sell your items.
