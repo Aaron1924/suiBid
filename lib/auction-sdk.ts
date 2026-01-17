@@ -2,7 +2,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SUI_CLOCK_OBJECT_ID } from "@mysten/sui/utils";
 
 export const MARKETPLACE_PACKAGE_ID = "0x...YOUR_PACKAGE_ID_HERE...";
-export const MODULE_NAME = "marketplace";
+export const MODULE_NAME = "auction";
 
 /**
  * Tạo Transaction Block để mở một cuộc đấu giá mới.
@@ -43,7 +43,7 @@ export function placeBidTx(itemType: string, auctionId: string, amount: bigint |
   const [coin] = tx.splitCoins(coinId ? tx.object(coinId) : tx.gas, [tx.pure.u64(amount)]);
 
   tx.moveCall({
-    target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::bid`,
+    target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::place_bid`,
     typeArguments: [itemType],
     arguments: [
       tx.object(auctionId),
@@ -62,14 +62,14 @@ export function placeBidTx(itemType: string, auctionId: string, amount: bigint |
  * @param itemType Loại của NFT
  * @param auctionId ID phiên đấu giá
  */
-export function settleAuctionTx(
+export function endAuctionTx(
   itemType: string,
   auctionId: string
 ) {
   const tx = new Transaction();
 
   tx.moveCall({
-    target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::settle_auction`,
+    target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::end_auction`,
     typeArguments: [itemType],
     arguments: [
       tx.object(auctionId),
@@ -80,11 +80,37 @@ export function settleAuctionTx(
   return tx;
 }
 
-export function withdrawBidTx(itemType: string, auctionId: string) {
+/**
+ * Tạo Transaction Block để người dùng (không thắng) rút tiền về.
+ * 
+ * @param itemType Loại của NFT
+ * @param auctionId ID phiên đấu giá
+ */
+export function withdrawTx(itemType: string, auctionId: string) {
     const tx = new Transaction();
 
     tx.moveCall({
-        target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::withdraw_bid`,
+        target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::withdraw`,
+        typeArguments: [itemType],
+        arguments: [
+            tx.object(auctionId)
+        ]
+    });
+
+    return tx;
+}
+
+/**
+ * Tạo Transaction Block để Claim (Dành cho Winner và Seller).
+ * 
+ * @param itemType Loại của NFT
+ * @param auctionId ID phiên đấu giá
+ */
+export function claimTx(itemType: string, auctionId: string) {
+    const tx = new Transaction();
+
+    tx.moveCall({
+        target: `${MARKETPLACE_PACKAGE_ID}::${MODULE_NAME}::claim`,
         typeArguments: [itemType],
         arguments: [
             tx.object(auctionId)
