@@ -3,7 +3,7 @@ import { SuiClient, SuiEvent } from '@mysten/sui/client';
 
 // Cấu hình
 const SUI_NODE_URL = 'https://fullnode.testnet.sui.io:443';
-const PACKAGE_ID = process.env.PACKAGE_ID || '0x...YOUR_PACKAGE_ID...';
+const PACKAGE_ID = process.env.PACKAGE_ID || '0x1b054c703bf2bf04ea78e35dc5d4b6b086aafb236c7017a222f62d5535753ccb';
 const MODULE_NAME = 'auction'; // Đã sửa thành 'auction'
 
 const client = new SuiClient({ url: SUI_NODE_URL });

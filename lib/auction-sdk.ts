@@ -1,7 +1,7 @@
 import { Transaction } from "@mysten/sui/transactions";
 import { SUI_CLOCK_OBJECT_ID } from "@mysten/sui/utils";
 
-export const MARKETPLACE_PACKAGE_ID = "0x...YOUR_PACKAGE_ID_HERE...";
+export const MARKETPLACE_PACKAGE_ID = process.env.PACKAGE_ID ||"0x1b054c703bf2bf04ea78e35dc5d4b6b086aafb236c7017a222f62d5535753ccb";
 export const MODULE_NAME = "auction";
 
 /**
