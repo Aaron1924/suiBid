@@ -5,7 +5,7 @@ import { ItemCard } from "@/components/item-card"
 import { ItemGridSkeleton } from "@/components/loading-skeleton"
 import { EmptyState } from "@/components/empty-state"
 import { parseObjectToItem, type MarketplaceItem } from "@/lib/sui-utils"
-import { Package, Wallet } from "lucide-react"
+import { Boxes, Wallet } from "lucide-react"
 import { ConnectButton } from "@mysten/dapp-kit"
 
 export default function MyItemsPage() {
@@ -42,15 +42,21 @@ export default function MyItemsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">My Items</h1>
-        <p className="text-muted-foreground">View and manage your on-chain items on the Sui network</p>
+        <div className="flex items-center gap-2 mb-2">
+          <Boxes className="h-6 w-6 text-primary" />
+          <h1 className="text-3xl font-bold">My Items</h1>
+          <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">Your On-Chain Objects</span>
+        </div>
+        <p className="text-muted-foreground">
+          View and manage objects you own on the Sui network. Accept bids from potential buyers.
+        </p>
       </div>
 
       {isLoading ? (
         <ItemGridSkeleton count={8} />
       ) : items.length === 0 ? (
         <EmptyState
-          icon={Package}
+          icon={Boxes}
           title="No items found"
           description="You don't own any items yet. Visit the marketplace to discover items or receive items from other users."
           actionLabel="Browse Marketplace"
@@ -63,7 +69,7 @@ export default function MyItemsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {items.map((item) => (
-              <ItemCard key={item.objectId} item={item} />
+              <ItemCard key={item.objectId} item={item} source="my-items" />
             ))}
           </div>
         </>

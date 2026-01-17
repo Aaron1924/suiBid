@@ -2,19 +2,17 @@
 
 import Link from "next/link"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { formatAddress, type MarketplaceItem } from "@/lib/sui-utils"
 import { ExternalLink, Package } from "lucide-react"
 
 interface ItemCardProps {
   item: MarketplaceItem
-  showOwner?: boolean
-  bidCount?: number
+  source?: "my-items" | "marketplace"
 }
 
-export function ItemCard({ item, showOwner = false, bidCount }: ItemCardProps) {
+export function ItemCard({ item, source = "my-items" }: ItemCardProps) {
   return (
-    <Link href={`/item/${item.objectId}`}>
+    <Link href={`/item/${item.objectId}?source=${source}`}>
       <Card className="group overflow-hidden bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer">
         <CardContent className="p-0">
           <div className="aspect-square bg-secondary flex items-center justify-center overflow-hidden">
@@ -36,12 +34,7 @@ export function ItemCard({ item, showOwner = false, bidCount }: ItemCardProps) {
           </div>
         </CardContent>
         <CardFooter className="p-4 pt-0 flex items-center justify-between">
-          {showOwner && <span className="text-xs text-muted-foreground font-mono">{formatAddress(item.owner)}</span>}
-          {bidCount !== undefined && (
-            <Badge variant="secondary" className="text-xs">
-              {bidCount} {bidCount === 1 ? "bid" : "bids"}
-            </Badge>
-          )}
+          <span className="text-xs text-muted-foreground font-mono">{formatAddress(item.owner)}</span>
           <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity ml-auto" />
         </CardFooter>
       </Card>

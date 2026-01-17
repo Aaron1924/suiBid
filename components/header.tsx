@@ -21,7 +21,7 @@ export function Header() {
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2">
               <Hexagon className="h-8 w-8 text-primary" />
-              <span className="font-semibold text-lg">SuiMarket</span>
+              <span className="font-semibold text-lg">SuiBid</span>
             </Link>
             <nav className="hidden md:flex items-center gap-6">
               {navigation.map((item) => (
