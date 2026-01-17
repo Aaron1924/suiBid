@@ -4,30 +4,28 @@ import Link from "next/link"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatAddress, formatSui } from "@/lib/sui-utils"
-import type { MockMarketplaceListing } from "@/lib/mock-marketplace-items"
-import { Package, Gavel, Wifi } from "lucide-react"
-import { useAuctionSocket } from "@/hooks/use-auction-socket"
+import { Package, Gavel } from "lucide-react"
+
+// This component now accepts a simplified, universal listing type
+// derived from either mock data or a parsed on-chain Auction object.
+export interface DisplayableListing {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  seller: string;
+  currentBid: string; // MIST
+  bidCount: number;
+}
 
 interface MarketplaceItemCardProps {
-  listing: MockMarketplaceListing
+  listing: DisplayableListing
 }
 
 export function MarketplaceItemCard({ listing }: MarketplaceItemCardProps) {
-  // Kết nối socket để lắng nghe giá Live
-  // Lưu ý: listing.id phải là Auction Object ID thực tế
-  const { price, isLive } = useAuctionSocket(listing.id, listing.currentBid)
-
   return (
     <Link href={`/item/${listing.id}`}>
       <Card className="group overflow-hidden bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer relative">
-        {/* Live Indicator */}
-        {isLive && (
-          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-red-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
-            <Wifi className="w-3 h-3" />
-            LIVE
-          </div>
-        )}
-        
         <CardContent className="p-0">
           <div className="aspect-square bg-secondary flex items-center justify-center overflow-hidden">
             {listing.imageUrl ? (
@@ -55,8 +53,7 @@ export function MarketplaceItemCard({ listing }: MarketplaceItemCardProps) {
           <div className="flex items-center gap-2 ml-auto">
             <div className="flex items-center gap-1 text-primary font-medium text-sm">
               <Gavel className="h-3 w-3" />
-              {/* Hiển thị giá từ Socket (nếu có update) hoặc giá ban đầu */}
-              {formatSui(String(price))} SUI
+              {formatSui(listing.currentBid)} SUI
             </div>
             <Badge variant="secondary" className="text-xs">
               {listing.bidCount} {listing.bidCount === 1 ? "bid" : "bids"}
