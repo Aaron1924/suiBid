@@ -13,7 +13,7 @@ interface MarketplaceItemCardProps {
 
 export function MarketplaceItemCard({ listing }: MarketplaceItemCardProps) {
   return (
-    <Link href={`/item/${listing.id}?source=marketplace`}>
+    <Link href={`/item/${listing.id}`}>
       <Card className="group overflow-hidden bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer">
         <CardContent className="p-0">
           <div className="aspect-square bg-secondary flex items-center justify-center overflow-hidden">

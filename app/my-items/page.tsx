@@ -69,7 +69,7 @@ export default function MyItemsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {items.map((item) => (
-              <ItemCard key={item.objectId} item={item} source="my-items" />
+              <ItemCard key={item.objectId} item={item} />
             ))}
           </div>
         </>

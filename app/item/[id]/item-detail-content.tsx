@@ -1,7 +1,7 @@
 "use client"
 
-import { use, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState } from "react"
+import { useParams } from "next/navigation"
 import { useCurrentAccount, useSuiClientQuery, useSignAndExecuteTransaction } from "@mysten/dapp-kit"
 import { Transaction } from "@mysten/sui/transactions"
 import { Button } from "@/components/ui/button"
@@ -18,21 +18,17 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { ConnectButton } from "@mysten/dapp-kit"
 
-export function ItemDetailContent({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const searchParams = useSearchParams()
-  const source = searchParams.get("source") || "marketplace"
-  const isFromMarketplace = source === "marketplace"
-
+export function ItemDetailContent() {
+  const { id } = useParams<{ id: string }>()
   const account = useCurrentAccount()
-  const { mutate: signAndExecute } = useSignAndExecuteTransaction()
 
   const [bidAmount, setBidAmount] = useState("")
   const [txState, setTxState] = useState<TransactionState>("idle")
   const [txDigest, setTxDigest] = useState<string>()
   const [errorMessage, setErrorMessage] = useState<string>()
 
-  const mockListing = isFromMarketplace ? getMockListingById(id) : null
+  const mockListing = getMockListingById(id)
+  const isFromMarketplace = !!mockListing
   const mockBids = isFromMarketplace && mockListing ? getMockBidsForListing(id) : []
 
   // Only query chain for owned items (my-items source)
@@ -122,6 +118,12 @@ export function ItemDetailContent({ params }: { params: Promise<{ id: string }> 
       setErrorMessage(err?.message || "Failed to accept bid")
       toast.error("Failed to accept bid")
     }
+  }
+
+  const handleAddBid = (amountToAdd: number) => {
+    const currentAmount = Number.parseFloat(bidAmount) || 0
+    const newAmount = currentAmount + amountToAdd
+    setBidAmount(newAmount.toFixed(2))
   }
 
   const needsWallet = !isFromMarketplace && !account
@@ -295,6 +297,11 @@ export function ItemDetailContent({ params }: { params: Promise<{ id: string }> 
                         <Button onClick={handlePlaceBid} disabled={!bidAmount || txState === "pending"}>
                           {txState === "pending" ? "Submitting..." : "Place Bid"}
                         </Button>
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={() => handleAddBid(1)} disabled={txState === "pending"}>+1 SUI</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleAddBid(2)} disabled={txState === "pending"}>+2 SUI</Button>
+                        <Button variant="outline" size="sm" onClick={() => handleAddBid(5)} disabled={txState === "pending"}>+5 SUI</Button>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
