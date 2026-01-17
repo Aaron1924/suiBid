@@ -39,6 +39,17 @@ export interface Bid {
   timestamp: number
 }
 
+export interface ParsedAuction {
+  id: string
+  item: any // Embedded item object (not an ID), contains .fields with NFT data
+  seller: string
+  minBid: number
+  highestBid: number
+  highestBidder: string | null
+  endTime: number
+  active: boolean
+}
+
 // Parse Sui object to marketplace item
 export function parseObjectToItem(object: any): MarketplaceItem | null {
   try {
@@ -56,6 +67,39 @@ export function parseObjectToItem(object: any): MarketplaceItem | null {
       owner: typeof object.data.owner === "string" ? object.data.owner : object.data.owner?.AddressOwner || "Unknown",
     }
   } catch {
+    return null
+  }
+}
+
+export function parseAuctionObject(object: any): ParsedAuction | null {
+  try {
+    // Handle both direct object and nested data structure
+    const content = object?.content || object?.data?.content
+    if (!content || content.dataType !== "moveObject") {
+      console.log("[parseAuctionObject] No valid content found:", JSON.stringify(object, null, 2))
+      return null
+    }
+
+    const fields = content.fields as any
+    if (!fields) {
+      console.log("[parseAuctionObject] No fields found in content")
+      return null
+    }
+
+    console.log("[parseAuctionObject] Fields:", JSON.stringify(fields, null, 2))
+
+    return {
+      id: fields.id?.id || object?.objectId || object?.data?.objectId || "",
+      item: fields.item, // Keep full embedded item object for NFT data extraction
+      seller: fields.seller || "",
+      minBid: Number.parseInt(fields.min_bid || "0", 10),
+      highestBid: Number.parseInt(fields.highest_bid || "0", 10),
+      highestBidder: fields.highest_bidder?.fields?.vec?.[0] || fields.highest_bidder || null,
+      endTime: Number.parseInt(fields.end_time || "0", 10),
+      active: fields.active ?? true,
+    }
+  } catch (e) {
+    console.error("[parseAuctionObject] Error:", e)
     return null
   }
 }
