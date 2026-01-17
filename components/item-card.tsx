@@ -7,12 +7,11 @@ import { ExternalLink, Package } from "lucide-react"
 
 interface ItemCardProps {
   item: MarketplaceItem
-  source?: "my-items" | "marketplace"
 }
 
-export function ItemCard({ item, source = "my-items" }: ItemCardProps) {
+export function ItemCard({ item }: ItemCardProps) {
   return (
-    <Link href={`/item/${item.objectId}?source=${source}`}>
+    <Link href={`/item/${item.objectId}`}>
       <Card className="group overflow-hidden bg-card border-border hover:border-primary/50 transition-all duration-200 cursor-pointer">
         <CardContent className="p-0">
           <div className="aspect-square bg-secondary flex items-center justify-center overflow-hidden">

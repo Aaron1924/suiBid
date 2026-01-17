@@ -1,10 +1,10 @@
 import { Suspense } from "react"
 import { ItemDetailContent } from "./item-detail-content"
 
-export default function ItemDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function ItemDetailPage() {
   return (
     <Suspense fallback={<ItemDetailSkeleton />}>
-      <ItemDetailContent params={params} />
+      <ItemDetailContent />
     </Suspense>
   )
 }
