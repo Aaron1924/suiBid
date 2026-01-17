@@ -1,10 +1,9 @@
 [package]
-name = " Sui Bid"
-version = "0.0.0"
-edition = "2026"
+name = "suibid"
+edition = "2024.beta"
 
 [dependencies]
-
-Sui = { git = "https://github.com/Aaron1924/suiBid.git", subdir = "path/to/package", rev = "framework/testnet"}
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/testnet" }
 
 [addresses]
+suibid = "0x0"
