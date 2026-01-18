@@ -5,6 +5,7 @@ export const SUIBID_PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID
 export const MARKETPLACE_MODULE = "marketplace"
 export const AUCTION_MODULE = "auction"
 export const NFT_MODULE = "nft"
+export const TRADE_MODULE = "trade"
 
 // Sui Clock Object ID (standard Sui system object at 0x6)
 export const SUI_CLOCK_OBJECT_ID = "0x6"

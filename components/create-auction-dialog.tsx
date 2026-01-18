@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useSignAndExecuteTransaction, useSuiClient } from "@mysten/dapp-kit"
+import { useQueryClient } from "@tanstack/react-query"
 import { Transaction } from "@mysten/sui/transactions"
 import { toast } from "sonner"
 import { SUIBID_PACKAGE_ID, SUI_CLOCK_OBJECT_ID } from "@/lib/constants"
@@ -24,20 +25,34 @@ interface CreateAuctionDialogProps {
   item: MarketplaceItem
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
 const DURATION_OPTIONS = [
+  { label: "5 Min (Demo)", value: 300000 },
   { label: "1 Hour", value: 3600000 },
   { label: "8 Hours", value: 28800000 },
   { label: "1 Day", value: 86400000 },
   { label: "3 Days", value: 259200000 },
 ]
 
-export function CreateAuctionDialog({ item, open, onOpenChange }: CreateAuctionDialogProps) {
+export function CreateAuctionDialog({ item, open, onOpenChange, onSuccess }: CreateAuctionDialogProps) {
   const suiClient = useSuiClient()
+  const queryClient = useQueryClient()
   const { mutate: signAndExecute } = useSignAndExecuteTransaction()
   const [txState, setTxState] = useState<TransactionState>("idle")
   const [txDigest, setTxDigest] = useState<string>()
+
+  const refreshWalletBalance = () => {
+    queryClient.refetchQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        return Array.isArray(key) && (
+          key.some(k => typeof k === "string" && k.toLowerCase().includes("balance"))
+        );
+      }
+    });
+  };
   const [errorMessage, setErrorMessage] = useState<string>()
 
   const [minBid, setMinBid] = useState("")
@@ -121,6 +136,10 @@ export function CreateAuctionDialog({ item, open, onOpenChange }: CreateAuctionD
             setTxDigest(result.digest)
 
             await saveAuctionToBackend(result.digest)
+
+            // Refresh wallet balance and call onSuccess callback to refresh parent data (e.g., items list)
+            refreshWalletBalance()
+            onSuccess?.()
 
             toast.success("Auction created successfully!", {
               action: {

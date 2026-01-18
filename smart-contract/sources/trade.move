@@ -17,6 +17,7 @@ module suibid::trade {
     /// Trade transaction được tạo bởi seller
     public struct Trade has key, store {
         id: UID,
+        title: std::string::String,  // Title của trade do seller đặt
         seller: address,
         end_time: u64,
         active: bool,
@@ -49,6 +50,7 @@ module suibid::trade {
 
     public struct TradeCreated has copy, drop {
         trade_id: ID,
+        title: std::string::String,
         seller: address,
         end_time: u64,
     }
@@ -80,6 +82,7 @@ module suibid::trade {
 
     /// Seller tạo trade transaction với các NFTs của mình
     public fun create_trade(
+        title: std::string::String,
         end_time: u64,
         clock: &Clock,
         ctx: &mut TxContext
@@ -89,6 +92,7 @@ module suibid::trade {
 
         let trade = Trade {
             id: object::new(ctx),
+            title,
             seller: ctx.sender(),
             end_time,
             active: true,
@@ -97,6 +101,7 @@ module suibid::trade {
 
         event::emit(TradeCreated {
             trade_id: object::id(&trade),
+            title: trade.title,
             seller: ctx.sender(),
             end_time,
         });
@@ -180,12 +185,11 @@ module suibid::trade {
     ) {
         assert!(trade.seller == ctx.sender(), ENotSeller);
         assert!(trade.active, ETradeNotActive);
-
-        let current_time = clock::timestamp_ms(clock);
-        assert!(current_time >= trade.end_time, ETradeNotExpired);
+        // Note: Seller can accept offer at any time (no time restriction)
 
         let Trade {
             mut id,
+            title: _,
             seller,
             end_time: _,
             active: _,
@@ -254,6 +258,7 @@ module suibid::trade {
 
         let Trade {
             id,
+            title: _,
             seller,
             end_time: _,
             active: _,
@@ -355,6 +360,10 @@ module suibid::trade {
     }
 
     // ===== View Functions =====
+
+    public fun title(trade: &Trade): std::string::String {
+        trade.title
+    }
 
     public fun seller(trade: &Trade): address {
         trade.seller

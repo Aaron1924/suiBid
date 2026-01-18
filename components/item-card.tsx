@@ -12,9 +12,10 @@ interface ItemCardProps {
   item: MarketplaceItem
   showCreateAuction?: boolean
   linkPrefix?: string // Add linkPrefix prop to customize the link destination
+  onAuctionSuccess?: () => void // Callback when auction is created successfully
 }
 
-export function ItemCard({ item, showCreateAuction = false, linkPrefix = "/item" }: ItemCardProps) {
+export function ItemCard({ item, showCreateAuction = false, linkPrefix = "/item", onAuctionSuccess }: ItemCardProps) {
   const [auctionDialogOpen, setAuctionDialogOpen] = useState(false)
 
   return (
@@ -64,7 +65,7 @@ export function ItemCard({ item, showCreateAuction = false, linkPrefix = "/item"
       </Card>
 
       {showCreateAuction && (
-        <CreateAuctionDialog item={item} open={auctionDialogOpen} onOpenChange={setAuctionDialogOpen} />
+        <CreateAuctionDialog item={item} open={auctionDialogOpen} onOpenChange={setAuctionDialogOpen} onSuccess={onAuctionSuccess} />
       )}
     </>
   )

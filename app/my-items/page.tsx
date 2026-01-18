@@ -27,7 +27,7 @@ export default function MyItemsPage() {
     "getOwnedObjects",
     {
       owner: account?.address ?? "",
-      options: { showContent: true, showDisplay: true, showType: true },
+      options: { showContent: true, showDisplay: true, showType: true, showOwner: true },
       limit: 50,
     },
     { enabled: !!account },
@@ -92,7 +92,7 @@ export default function MyItemsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {auctionableItems.map((item) => (
-              <ItemCard key={item.objectId} item={item} showCreateAuction={true} linkPrefix="/my-items" />
+              <ItemCard key={item.objectId} item={item} showCreateAuction={true} linkPrefix="/my-items" onAuctionSuccess={() => refetch()} />
             ))}
           </div>
         </>

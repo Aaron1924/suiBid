@@ -86,7 +86,7 @@ module suibid::auction {
             item: option::some(item),
             seller: sender,
             min_bid,
-            highest_bid: 0,
+            highest_bid: min_bid,
             highest_bidder: option::none(),
             end_time,
             active: true,
@@ -133,7 +133,9 @@ module suibid::auction {
         let new_position = current_position + bid_amount;
 
         // New position must be higher than current highest bid
-        let required_min = if (auction.highest_bid == 0) {
+        // If no one has bid yet (highest_bidder is none), first bid must meet min_bid
+        // Otherwise, must exceed current highest_bid
+        let required_min = if (option::is_none(&auction.highest_bidder)) {
             auction.min_bid
         } else {
             auction.highest_bid + 1
