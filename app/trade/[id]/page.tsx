@@ -85,7 +85,6 @@ export default function TradeDetailPage() {
       const fields = tradeObjectData.data.content.fields as any
       setTrade({
         id,
-        title: fields.title || "Untitled Trade",
         seller: fields.seller,
         end_time: parseInt(fields.end_time, 10),
         active: fields.active,
@@ -471,7 +470,7 @@ export default function TradeDetailPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <ArrowLeftRight className="h-5 w-5 text-primary" />
-                  {trade.title}
+                  Trade #{trade.id.slice(0, 8)}...
                 </CardTitle>
                 <Badge variant={trade.active ? (isExpired ? "secondary" : "default") : "outline"}>
                   {!trade.active ? "Completed" : isExpired ? "Accepting Offers" : "Collecting Offers"}
@@ -530,7 +529,7 @@ export default function TradeDetailPage() {
           {/* Seller's Items */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Seller's Items</CardTitle>
+              <CardTitle className="text-lg">TradeMaster's Items</CardTitle>
             </CardHeader>
             <CardContent>
               {sellerItems.length === 0 ? (

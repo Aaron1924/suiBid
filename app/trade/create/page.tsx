@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeftRight, ArrowLeft, Package, Clock, AlertCircle, Type } from "lucide-react"
+import { ArrowLeftRight, ArrowLeft, Package, Clock, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { SUIBID_PACKAGE_ID, NFT_MODULE, SUI_CLOCK_OBJECT_ID } from "@/lib/constants"
@@ -42,7 +42,6 @@ export default function CreateTradePage() {
 
   const [userNFTs, setUserNFTs] = useState<NFTItem[]>([])
   const [selectedNFTs, setSelectedNFTs] = useState<string[]>([])
-  const [title, setTitle] = useState("")
   const [duration, setDuration] = useState("24") // hours
   const [customDuration, setCustomDuration] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -105,8 +104,6 @@ export default function CreateTradePage() {
   const handleCreateTrade = async () => {
     if (!account || selectedNFTs.length === 0) return
 
-    const tradeTitle = title.trim() || "Untitled Trade"
-
     setIsSubmitting(true)
     try {
       const endTimeMs = Date.now() + getDurationMs()
@@ -114,11 +111,10 @@ export default function CreateTradePage() {
       // Build transaction: create_trade + add_seller_item for each NFT + share_object
       const tx = new Transaction()
 
-      // Create trade with title
+      // Create trade (deployed contract doesn't have title parameter)
       const [trade] = tx.moveCall({
         target: `${SUIBID_PACKAGE_ID}::${TRADE_MODULE}::create_trade`,
         arguments: [
-          tx.pure.string(tradeTitle),
           tx.pure.u64(endTimeMs),
           tx.object(SUI_CLOCK_OBJECT_ID),
         ],
@@ -245,24 +241,6 @@ export default function CreateTradePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Trade Title */}
-            <div className="space-y-2">
-              <Label htmlFor="trade-title" className="flex items-center gap-2">
-                <Type className="h-4 w-4" />
-                Trade Title
-              </Label>
-              <Input
-                id="trade-title"
-                placeholder="Enter a title for your trade offer..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={100}
-              />
-              <p className="text-xs text-muted-foreground">
-                Give your trade a descriptive title so others know what you're looking for.
-              </p>
-            </div>
-
             {/* Duration Selection */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">

@@ -99,6 +99,7 @@ module suibid::auction {
         active: bool,
         total_balance: Balance<SUI>,    // Holds ALL staked bids
         positions: Table<address, u64>, // Each user's total staked amount
+        bidders: vector<address>,       // Track all bidders for auto-refund
     }
 
     // ──────────────────────────────────────────────
@@ -147,6 +148,7 @@ module suibid::auction {
             active: true,
             total_balance: balance::zero<SUI>(),
             positions: table::new(ctx),
+            bidders: vector::empty(),
         };
 
         event::emit(AuctionCreated {
@@ -207,6 +209,8 @@ module suibid::auction {
             *position = new_position;
         } else {
             table::add(&mut auction.positions, sender, new_position);
+            // Track new bidder for auto-refund
+            vector::push_back(&mut auction.bidders, sender);
         };
 
         // Update highest bid and bidder
@@ -304,6 +308,31 @@ module suibid::auction {
 
             // Remove winner's position (they can't withdraw)
             table::remove(&mut auction.positions, winner);
+
+            // Auto-refund all losers
+            let bidders_count = vector::length(&auction.bidders);
+            let mut i = 0;
+            while (i < bidders_count) {
+                let bidder = *vector::borrow(&auction.bidders, i);
+                // Skip winner (already removed) - check if position still exists
+                if (table::contains(&auction.positions, bidder)) {
+                    let position_amount = table::remove(&mut auction.positions, bidder);
+                    if (position_amount > 0) {
+                        let refund_coin = coin::from_balance(
+                            balance::split(&mut auction.total_balance, position_amount),
+                            ctx
+                        );
+                        transfer::public_transfer(refund_coin, bidder);
+
+                        event::emit(Withdrawn {
+                            auction_id: object::id(auction),
+                            bidder,
+                            amount: position_amount,
+                        });
+                    };
+                };
+                i = i + 1;
+            };
         } else {
             // No bids → seller reclaims item
             assert!(sender == auction.seller, E_NOT_SELLER);

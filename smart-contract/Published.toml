@@ -4,18 +4,9 @@
 
 [published.testnet]
 chain-id = "4c78adac"
-<<<<<<< HEAD
-published-at = "0x2bfb87b87722f481a1e1d146fe5b5394bdb2bd94b9db4d41c6388da6ebddfb90"
-original-id = "0x2bfb87b87722f481a1e1d146fe5b5394bdb2bd94b9db4d41c6388da6ebddfb90"
+published-at = "0xff2da6a98b752881fad7126ad5f61b7516106841018f489501bc58798d8d518d"
+original-id = "0xff2da6a98b752881fad7126ad5f61b7516106841018f489501bc58798d8d518d"
 version = 1
 toolchain-version = "1.63.2"
 build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0x799323d14905577d065cfc4269fddf60288fccff40a7f925d1d17f3d932dd20a"
-=======
-published-at = "0x920d2bf0f92badcaf2545748464463f14da55e2d4bb3359ac36c299b4f2c8dec"
-original-id = "0x920d2bf0f92badcaf2545748464463f14da55e2d4bb3359ac36c299b4f2c8dec"
-version = 1
-toolchain-version = "1.63.2"
-build-config = { flavor = "sui", edition = "2024" }
-upgrade-capability = "0xcf036b8660ea6f020edde812928aa0dcd95b17df6edea0b062d8d649accc47cc"
->>>>>>> f4c500f (add admin pool and withdraw)
+upgrade-capability = "0x424c15335867a7cb86024633ff72b2950ee8bf9ea24377d7ae8ade6d010f55e3"

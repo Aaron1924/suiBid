@@ -161,9 +161,9 @@ function useTrades() {
           const parsedTrade = parseTradeObject(tradeObject.data)
           if (!parsedTrade || !parsedTrade.active) return null
 
-          // Try to fetch first item's metadata from dynamic fields
-          let itemName = "Trade Offer"
-          let itemDescription = "NFT trade offer"
+          // Fetch first item's metadata from dynamic fields to get NFT name
+          let itemName = ""
+          let itemDescription = ""
           let itemImageUrl: string | null = null
           let itemCount = 0
 
@@ -172,9 +172,10 @@ function useTrades() {
               parentId: id,
             })
 
+            // SellerItemKey has { index: u64 } in the deployed contract
             const sellerItemFields = dynamicFields.data.filter(
               (field) => field.name.value && typeof field.name.value === "object" &&
-                (field.name.value as any).seller_item_index !== undefined
+                (field.name.value as any).index !== undefined
             )
             itemCount = sellerItemFields.length
 
@@ -189,9 +190,12 @@ function useTrades() {
                 const fieldContent = fieldObject.data.content.fields as any
                 if (fieldContent.value) {
                   const nftFields = fieldContent.value.fields || fieldContent.value
-                  itemName = nftFields.name || "Trade Item"
-                  itemDescription = nftFields.description || "NFT trade offer"
-                  itemImageUrl = nftFields.image_url || nftFields.url || null
+                  // Get actual NFT name from the object
+                  itemName = nftFields.name || ""
+                  itemDescription = nftFields.description || ""
+                  // Handle Url type which might be wrapped
+                  const urlField = nftFields.image_url || nftFields.url
+                  itemImageUrl = typeof urlField === "string" ? urlField : urlField?.url || null
                 }
               }
             }
@@ -199,9 +203,14 @@ function useTrades() {
             console.error("[useTrades] Error fetching trade items:", err)
           }
 
+          // Skip trades with no items or no name
+          if (!itemName) {
+            console.warn(`[useTrades] Trade ${id} has no item name, using ID`)
+            itemName = `Trade #${parsedTrade.id.slice(2, 10)}`
+          }
+
           return {
             id: parsedTrade.id,
-            title: parsedTrade.title,
             seller: parsedTrade.seller,
             endTime: parsedTrade.end_time,
             offerCount: parsedTrade.offer_count,
@@ -220,8 +229,8 @@ function useTrades() {
       const results = await Promise.all(tradePromises)
       const validTrades = results.filter((t): t is DisplayableTrade => t !== null)
 
-      // Sort alphabetically by title (case-insensitive)
-      validTrades.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()))
+      // Sort alphabetically by itemName (case-insensitive)
+      validTrades.sort((a, b) => a.itemName.toLowerCase().localeCompare(b.itemName.toLowerCase()))
 
       setTrades(validTrades)
     } catch (err) {

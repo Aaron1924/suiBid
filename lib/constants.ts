@@ -10,6 +10,13 @@ export const TRADE_MODULE = "trade"
 // Sui Clock Object ID (standard Sui system object at 0x6)
 export const SUI_CLOCK_OBJECT_ID = "0x6"
 
+// RewardsRegistry shared object ID - created when the package is deployed
+// To find this ID: query for objects created during package deployment with type RewardsRegistry
+export const REWARDS_REGISTRY_ID = process.env.NEXT_PUBLIC_REWARDS_REGISTRY_ID
+
+// AdminPool shared object ID - created when the package is deployed (for auction fees)
+export const ADMIN_POOL_ID = process.env.NEXT_PUBLIC_ADMIN_POOL_ID
+
 // Auction item type - replace with your actual NFT type
 export const AUCTION_ITEM_TYPE = `${SUIBID_PACKAGE_ID}::${NFT_MODULE}::SuiBidNFT`
 

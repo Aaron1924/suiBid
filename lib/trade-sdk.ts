@@ -1,6 +1,6 @@
 import { Transaction } from "@mysten/sui/transactions"
 import type { SuiClient } from "@mysten/sui/client"
-import { SUIBID_PACKAGE_ID, SUI_CLOCK_OBJECT_ID } from "./constants"
+import { SUIBID_PACKAGE_ID, SUI_CLOCK_OBJECT_ID, REWARDS_REGISTRY_ID } from "./constants"
 
 export const TRADE_MODULE = "trade"
 
@@ -10,7 +10,6 @@ export const TRADE_MODULE = "trade"
 
 export interface Trade {
   id: string
-  title: string
   seller: string
   end_time: number
   active: boolean
@@ -43,13 +42,12 @@ interface WalletContextState {
 /**
  * Creates a Transaction for creating a new trade.
  */
-export function createTradeTx(title: string, endTimeMs: number | bigint): Transaction {
+export function createTradeTx(endTimeMs: number | bigint): Transaction {
   const tx = new Transaction()
 
   tx.moveCall({
     target: `${SUIBID_PACKAGE_ID}::${TRADE_MODULE}::create_trade`,
     arguments: [
-      tx.pure.string(title),
       tx.pure.u64(endTimeMs),
       tx.object(SUI_CLOCK_OBJECT_ID),
     ],
@@ -133,12 +131,17 @@ export function acceptOfferTx(
 ): Transaction {
   const tx = new Transaction()
 
+  if (!REWARDS_REGISTRY_ID) {
+    throw new Error("REWARDS_REGISTRY_ID is not configured. Please set NEXT_PUBLIC_REWARDS_REGISTRY_ID in your .env file.")
+  }
+
   tx.moveCall({
     target: `${SUIBID_PACKAGE_ID}::${TRADE_MODULE}::accept_offer`,
     arguments: [
       tx.object(tradeId),
       tx.pure.u64(offerIndex),
       tx.object(SUI_CLOCK_OBJECT_ID),
+      tx.object(REWARDS_REGISTRY_ID),
     ],
     typeArguments: [sellerItemType, buyerItemType],
   })
@@ -195,7 +198,6 @@ export function withdrawOfferTx(
  * Creates a trade and adds multiple items in a single transaction.
  */
 export function createTradeWithItemsTx(
-  title: string,
   endTimeMs: number | bigint,
   items: { id: string; type: string }[],
 ): Transaction {
@@ -205,7 +207,6 @@ export function createTradeWithItemsTx(
   const [trade] = tx.moveCall({
     target: `${SUIBID_PACKAGE_ID}::${TRADE_MODULE}::create_trade`,
     arguments: [
-      tx.pure.string(title),
       tx.pure.u64(endTimeMs),
       tx.object(SUI_CLOCK_OBJECT_ID),
     ],
@@ -272,10 +273,9 @@ export function placeOfferWithItemsTx(
 
 export async function createTrade(
   wallet: WalletContextState,
-  title: string,
   endTimeMs: number | bigint,
 ): Promise<{ digest: string }> {
-  const tx = createTradeTx(title, endTimeMs)
+  const tx = createTradeTx(endTimeMs)
   return wallet.signAndExecuteTransaction({ transaction: tx })
 }
 
@@ -379,7 +379,6 @@ export async function fetchActiveTrades(
           if (fields.active) {
             trades.push({
               id: tradeId,
-              title: fields.title || "Untitled Trade",
               seller: fields.seller,
               end_time: parseInt(fields.end_time, 10),
               active: fields.active,
@@ -411,7 +410,6 @@ export function parseTradeObject(data: any): Trade | null {
     const fields = content.fields as any
     return {
       id: data?.objectId || data?.data?.objectId || fields.id?.id || "",
-      title: fields.title || "Untitled Trade",
       seller: fields.seller,
       end_time: parseInt(fields.end_time, 10),
       active: fields.active,

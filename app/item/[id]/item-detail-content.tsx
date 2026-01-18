@@ -101,13 +101,30 @@ export function ItemDetailContent() {
     ? (() => {
       const fieldsAuction = (auctionObjectData.data.content as any)?.fields;
       if (!fieldsAuction) return null;
+
+      // Parse Option<address> - Sui can return it in different formats
+      const parseOptionAddress = (opt: any): string | null => {
+        if (!opt) return null;
+        // Format 1: { fields: { vec: ["0x..."] } }
+        if (opt?.fields?.vec?.[0]) return opt.fields.vec[0];
+        // Format 2: { vec: ["0x..."] }
+        if (opt?.vec?.[0]) return opt.vec[0];
+        // Format 3: Direct string (some serializations)
+        if (typeof opt === 'string') return opt;
+        return null;
+      };
+
+      const highestBidder = parseOptionAddress(fieldsAuction.highest_bidder);
+      console.log("[Debug] highest_bidder raw:", fieldsAuction.highest_bidder);
+      console.log("[Debug] highest_bidder parsed:", highestBidder);
+
       return {
         id: auctionObjectData.data.objectId,
         item: fieldsAuction.item,
         seller: fieldsAuction.seller,
         min_bid: parseInt(fieldsAuction.min_bid || "0", 10),
         highest_bid: parseInt(fieldsAuction.highest_bid || "0", 10),
-        highest_bidder: fieldsAuction.highest_bidder?.fields?.vec?.[0] || null,
+        highest_bidder: highestBidder,
         end_time: parseInt(fieldsAuction.end_time || "0", 10),
         active: fieldsAuction.active ?? true,
       };
@@ -217,8 +234,9 @@ export function ItemDetailContent() {
   // Normalize addresses for comparison (Sui addresses may have different formats)
   const normalizeAddress = (addr: string | null | undefined): string => {
     if (!addr) return "";
-    // Remove 0x prefix and convert to lowercase for comparison
-    return addr.toLowerCase().replace(/^0x/, "");
+    // Remove 0x prefix, leading zeros, and convert to lowercase for comparison
+    // This handles cases like "0x00000...abc" vs "0xabc"
+    return addr.toLowerCase().replace(/^0x0*/, "");
   };
 
   const isSeller = normalizeAddress(account?.address) === normalizeAddress(parsedAuction?.seller);
@@ -226,6 +244,18 @@ export function ItemDetailContent() {
     normalizeAddress(account.address) === normalizeAddress(parsedAuction.highest_bidder);
   const hasBidPosition = userPosition > 0;
   const isWinner = isHighestBidder && isAuctionEnded;
+
+  // Debug logging for winner detection
+  console.log("[Debug] Winner check:", {
+    accountAddress: account?.address,
+    highestBidder: parsedAuction?.highest_bidder,
+    normalizedAccount: normalizeAddress(account?.address),
+    normalizedHighestBidder: normalizeAddress(parsedAuction?.highest_bidder),
+    isHighestBidder,
+    isAuctionEnded,
+    isWinner,
+    auctionActive: parsedAuction?.active,
+  });
 
   // Calculate minimum required bid
   const calculateRequiredBid = (): { minBidSui: number; minAmountNeeded: number } => {
@@ -562,10 +592,23 @@ export function ItemDetailContent() {
                   End Auction
                 </Button>
               )}
-              {(isSeller || isWinner) && !parsedAuction.active && (
+              {/* Winner claims NFT (seller gets paid automatically) */}
+              {isWinner && !parsedAuction.active && (
                 <Button onClick={handleClaim} disabled={txState === "pending"}>
-                  Claim {isSeller ? "Funds" : "NFT"}
+                  Claim NFT
                 </Button>
+              )}
+              {/* Seller can only reclaim item if there were NO bids */}
+              {isSeller && !parsedAuction.active && !parsedAuction.highest_bidder && (
+                <Button onClick={handleClaim} disabled={txState === "pending"}>
+                  Reclaim Item
+                </Button>
+              )}
+              {/* Show info to seller when waiting for winner to claim */}
+              {isSeller && !parsedAuction.active && parsedAuction.highest_bidder && (
+                <div className="text-sm text-muted-foreground bg-secondary/50 rounded-lg p-3 text-center">
+                  Waiting for winner to claim. You'll receive {formatSui(parsedAuction.highest_bid.toString())} SUI automatically.
+                </div>
               )}
               {hasBidPosition && !isWinner && !isSeller && !parsedAuction.active && (
                 <Button variant="outline" onClick={handleWithdraw} disabled={txState === "pending"}>

@@ -9,13 +9,12 @@ import { ArrowLeftRight, Clock, Package, Users } from "lucide-react"
 
 export interface DisplayableTrade {
   id: string
-  title: string  // Trade title set by the seller
   seller: string
   endTime: number
   offerCount: number
   active: boolean
-  // Optional: first item info for display
-  itemName?: string
+  // Item info for display
+  itemName: string
   itemDescription?: string
   itemImageUrl?: string | null
   itemCount?: number
@@ -94,10 +93,10 @@ export function TradeItemCard({ trade }: TradeItemCardProps) {
           </div>
           <div className="p-4 space-y-2">
             <h3 className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
-              {trade.title}
+              {trade.itemName}
             </h3>
             <p className="text-xs text-muted-foreground line-clamp-2">
-              {trade.itemName ? `Trading: ${trade.itemName}${trade.itemCount && trade.itemCount > 1 ? ` +${trade.itemCount - 1} more` : ""}` : "NFT trade offer - swap items with other users"}
+              {trade.itemCount && trade.itemCount > 1 ? `+${trade.itemCount - 1} more items` : "NFT trade offer"}
             </p>
           </div>
         </CardContent>

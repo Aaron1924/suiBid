@@ -1,6 +1,6 @@
 import { Transaction } from "@mysten/sui/transactions"
 import type { SuiClient } from "@mysten/sui/client"
-import { SUIBID_PACKAGE_ID, AUCTION_MODULE, SUI_CLOCK_OBJECT_ID, AUCTION_ITEM_TYPE } from "./constants"
+import { SUIBID_PACKAGE_ID, AUCTION_MODULE, SUI_CLOCK_OBJECT_ID, AUCTION_ITEM_TYPE, REWARDS_REGISTRY_ID, ADMIN_POOL_ID } from "./constants"
 
 // ──────────────────────────────────────────────
 // TypeScript Interfaces
@@ -88,9 +88,20 @@ export function settleAuctionTx(auctionId: string, itemType: string = AUCTION_IT
 export function claimTx(auctionId: string, itemType: string = AUCTION_ITEM_TYPE): Transaction {
   const tx = new Transaction()
 
+  if (!REWARDS_REGISTRY_ID) {
+    throw new Error("REWARDS_REGISTRY_ID is not configured. Please set NEXT_PUBLIC_REWARDS_REGISTRY_ID in your .env file.")
+  }
+  if (!ADMIN_POOL_ID) {
+    throw new Error("ADMIN_POOL_ID is not configured. Please set NEXT_PUBLIC_ADMIN_POOL_ID in your .env file.")
+  }
+
   tx.moveCall({
     target: `${SUIBID_PACKAGE_ID}::${AUCTION_MODULE}::claim`,
-    arguments: [tx.object(auctionId)],
+    arguments: [
+      tx.object(auctionId),
+      tx.object(REWARDS_REGISTRY_ID),
+      tx.object(ADMIN_POOL_ID),
+    ],
     typeArguments: [itemType],
   })
 

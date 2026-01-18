@@ -22,6 +22,12 @@ module suibid::auction {
     const E_NO_POSITION: u64 = 5;
     const E_AUCTION_STILL_ACTIVE: u64 = 6;
     const E_IS_WINNER: u64 = 7;
+    const E_INSUFFICIENT_BALANCE: u64 = 8;
+
+    // ──────────────────────────────────────────────
+    // Constants
+    // ──────────────────────────────────────────────
+    const PLATFORM_FEE_BPS: u64 = 500; // 5% in basis points (500/10000 = 5%)
 
     // ──────────────────────────────────────────────
     // Events
@@ -52,6 +58,33 @@ module suibid::auction {
         amount: u64,
     }
 
+    public struct PlatformFeeCollected has copy, drop {
+        auction_id: ID,
+        amount: u64,
+    }
+
+    public struct AdminWithdrawal has copy, drop {
+        admin: address,
+        amount: u64,
+    }
+
+    // ──────────────────────────────────────────────
+    // Admin Pool - Holds platform fees
+    // ──────────────────────────────────────────────
+    public struct AdminPool has key {
+        id: UID,
+        admin: address,
+        balance: Balance<SUI>,
+        total_fees_collected: u64,
+    }
+
+    // ──────────────────────────────────────────────
+    // Admin capability - Only admin can withdraw from pool
+    // ──────────────────────────────────────────────
+    public struct AdminCap has key, store {
+        id: UID,
+    }
+
     // ──────────────────────────────────────────────
     // Core shared Auction object
     // ──────────────────────────────────────────────
@@ -66,6 +99,29 @@ module suibid::auction {
         active: bool,
         total_balance: Balance<SUI>,    // Holds ALL staked bids
         positions: Table<address, u64>, // Each user's total staked amount
+        bidders: vector<address>,       // Track all bidders for auto-refund
+    }
+
+    // ──────────────────────────────────────────────
+    // Init function - Creates AdminPool and gives AdminCap to deployer
+    // ──────────────────────────────────────────────
+    fun init(ctx: &mut TxContext) {
+        let admin = tx_context::sender(ctx);
+
+        // Create AdminPool
+        let admin_pool = AdminPool {
+            id: object::new(ctx),
+            admin,
+            balance: balance::zero<SUI>(),
+            total_fees_collected: 0,
+        };
+        transfer::share_object(admin_pool);
+
+        // Create and transfer AdminCap to deployer
+        let admin_cap = AdminCap {
+            id: object::new(ctx),
+        };
+        transfer::transfer(admin_cap, admin);
     }
 
     // ──────────────────────────────────────────────
@@ -92,6 +148,7 @@ module suibid::auction {
             active: true,
             total_balance: balance::zero<SUI>(),
             positions: table::new(ctx),
+            bidders: vector::empty(),
         };
 
         event::emit(AuctionCreated {
@@ -152,6 +209,8 @@ module suibid::auction {
             *position = new_position;
         } else {
             table::add(&mut auction.positions, sender, new_position);
+            // Track new bidder for auto-refund
+            vector::push_back(&mut auction.bidders, sender);
         };
 
         // Update highest bid and bidder
@@ -188,11 +247,12 @@ module suibid::auction {
     }
 
     // ──────────────────────────────────────────────
-    // Claim - Winner gets item, Seller gets winner's position (with refund for high-tier winners)
+    // Claim - Winner gets item, Seller gets winner's position (with 5% platform fee and refund for high-tier winners)
     // ──────────────────────────────────────────────
     public entry fun claim<Item: key + store>(
         auction: &mut Auction<Item>,
         rewards_registry: &mut RewardsRegistry,
+        admin_pool: &mut AdminPool,
         ctx: &mut TxContext,
     ) {
         let sender = tx_context::sender(ctx);
@@ -206,16 +266,31 @@ module suibid::auction {
             let item = option::extract(&mut auction.item);
             transfer::public_transfer(item, winner);
 
-            // Calculate refund for high-tier winners
+            // Calculate amounts
             let winner_position = *table::borrow(&auction.positions, winner);
-            let refund_amount = rewards::calculate_refund(rewards_registry, winner, winner_position);
+
+            // Calculate platform fee (5% of winner's bid)
+            let platform_fee = (winner_position * PLATFORM_FEE_BPS) / 10000;
+
+            // Calculate refund for high-tier winners (from remaining amount after platform fee)
+            let amount_after_fee = winner_position - platform_fee;
+            let refund_amount = rewards::calculate_refund(rewards_registry, winner, amount_after_fee);
 
             // Award points to seller (more points) and buyer (fewer points)
             rewards::award_auction_seller_points(rewards_registry, auction.seller, ctx);
             rewards::award_auction_buyer_points(rewards_registry, winner, ctx);
 
-            // Transfer winner's position amount to seller (minus refund)
-            let seller_amount = winner_position - refund_amount;
+            // Transfer platform fee to AdminPool
+            balance::join(&mut admin_pool.balance, balance::split(&mut auction.total_balance, platform_fee));
+            admin_pool.total_fees_collected = admin_pool.total_fees_collected + platform_fee;
+
+            event::emit(PlatformFeeCollected {
+                auction_id: object::id(auction),
+                amount: platform_fee,
+            });
+
+            // Transfer winner's position amount to seller (after platform fee and refund)
+            let seller_amount = amount_after_fee - refund_amount;
             let payment = coin::from_balance(
                 balance::split(&mut auction.total_balance, seller_amount),
                 ctx
@@ -233,6 +308,31 @@ module suibid::auction {
 
             // Remove winner's position (they can't withdraw)
             table::remove(&mut auction.positions, winner);
+
+            // Auto-refund all losers
+            let bidders_count = vector::length(&auction.bidders);
+            let mut i = 0;
+            while (i < bidders_count) {
+                let bidder = *vector::borrow(&auction.bidders, i);
+                // Skip winner (already removed) - check if position still exists
+                if (table::contains(&auction.positions, bidder)) {
+                    let position_amount = table::remove(&mut auction.positions, bidder);
+                    if (position_amount > 0) {
+                        let refund_coin = coin::from_balance(
+                            balance::split(&mut auction.total_balance, position_amount),
+                            ctx
+                        );
+                        transfer::public_transfer(refund_coin, bidder);
+
+                        event::emit(Withdrawn {
+                            auction_id: object::id(auction),
+                            bidder,
+                            amount: position_amount,
+                        });
+                    };
+                };
+                i = i + 1;
+            };
         } else {
             // No bids → seller reclaims item
             assert!(sender == auction.seller, E_NOT_SELLER);
@@ -280,6 +380,55 @@ module suibid::auction {
     }
 
     // ──────────────────────────────────────────────
+    // Admin functions
+    // ──────────────────────────────────────────────
+
+    /// Admin withdraws funds from the pool
+    /// Requires AdminCap to prove admin identity
+    public entry fun admin_withdraw(
+        _admin_cap: &AdminCap,
+        admin_pool: &mut AdminPool,
+        amount: u64,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+
+        // Check if pool has enough balance
+        let pool_balance = balance::value(&admin_pool.balance);
+        assert!(pool_balance >= amount, E_INSUFFICIENT_BALANCE);
+
+        // Split and transfer to admin
+        let withdraw_balance = balance::split(&mut admin_pool.balance, amount);
+        let withdraw_coin = coin::from_balance(withdraw_balance, ctx);
+        transfer::public_transfer(withdraw_coin, sender);
+
+        event::emit(AdminWithdrawal {
+            admin: sender,
+            amount,
+        });
+    }
+
+    /// Admin withdraws all funds from the pool
+    public entry fun admin_withdraw_all(
+        _admin_cap: &AdminCap,
+        admin_pool: &mut AdminPool,
+        ctx: &mut TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        let pool_balance = balance::value(&admin_pool.balance);
+
+        // Transfer all balance to admin
+        let withdraw_balance = balance::withdraw_all(&mut admin_pool.balance);
+        let withdraw_coin = coin::from_balance(withdraw_balance, ctx);
+        transfer::public_transfer(withdraw_coin, sender);
+
+        event::emit(AdminWithdrawal {
+            admin: sender,
+            amount: pool_balance,
+        });
+    }
+
+    // ──────────────────────────────────────────────
     // View functions
     // ──────────────────────────────────────────────
     public fun highest_bid<Item: key + store>(auction: &Auction<Item>): u64 {
@@ -308,5 +457,28 @@ module suibid::auction {
 
     public fun end_time<Item: key + store>(auction: &Auction<Item>): u64 {
         auction.end_time
+    }
+
+    /// Get AdminPool balance
+    public fun admin_pool_balance(admin_pool: &AdminPool): u64 {
+        balance::value(&admin_pool.balance)
+    }
+
+    /// Get total fees collected
+    public fun total_fees_collected(admin_pool: &AdminPool): u64 {
+        admin_pool.total_fees_collected
+    }
+
+    /// Get admin address
+    public fun admin_address(admin_pool: &AdminPool): address {
+        admin_pool.admin
+    }
+
+    // ──────────────────────────────────────────────
+    // Test-only functions
+    // ──────────────────────────────────────────────
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        init(ctx);
     }
 }
