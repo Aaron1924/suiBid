@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useSuiClient } from "@mysten/dapp-kit"
 import { MarketplaceItemCard, type DisplayableListing } from "@/components/marketplace-item-card"
@@ -280,7 +280,7 @@ function useLeaderboard() {
   return { leaderboard, isLoading, error, refetch: fetchLeaderboard }
 }
 
-export default function MarketplacePage() {
+function MarketplaceContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { auctions, isLoading: auctionsLoading, refetch: refetchAuctions } = useAuctions()
@@ -507,5 +507,37 @@ export default function MarketplacePage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+function MarketplaceLoading() {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <Store className="h-6 w-6 text-primary" />
+          <Skeleton className="h-9 w-48" />
+        </div>
+        <Skeleton className="h-5 w-64" />
+      </div>
+      <Skeleton className="h-10 w-80 mb-6" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export default function MarketplacePage() {
+  return (
+    <Suspense fallback={<MarketplaceLoading />}>
+      <MarketplaceContent />
+    </Suspense>
   )
 }
