@@ -4,25 +4,40 @@ import { useCurrentAccount, useSuiClientQuery } from "@mysten/dapp-kit"
 import { ItemCard } from "@/components/item-card"
 import { ItemGridSkeleton } from "@/components/loading-skeleton"
 import { EmptyState } from "@/components/empty-state"
+import { MintNFTDialog } from "@/components/mint-nft-dialog"
 import { parseObjectToItem, type MarketplaceItem } from "@/lib/sui-utils"
 import { Boxes, Wallet } from "lucide-react"
-import { ConnectButton } from "@mysten/dapp-kit"
+import { ConnectWallet } from "@/components/connect-wallet"
+
+const NON_AUCTIONABLE_TYPES = [
+  "0x2::coin::Coin", // Coins don't have 'store'
+  "0x2::coin::CoinMetadata",
+  "0x2::package::UpgradeCap",
+  "0x2::dynamic_field::Field",
+]
+
+function isAuctionable(type: string): boolean {
+  return !NON_AUCTIONABLE_TYPES.some((nonAuctionable) => type.includes(nonAuctionable))
+}
 
 export default function MyItemsPage() {
   const account = useCurrentAccount()
 
-  const { data, isLoading, error } = useSuiClientQuery(
+  const { data, isLoading, error, refetch } = useSuiClientQuery(
     "getOwnedObjects",
     {
       owner: account?.address ?? "",
-      options: { showContent: true, showDisplay: true, showType: true },
+      options: { showContent: true, showDisplay: true, showType: true, showOwner: true },
       limit: 50,
     },
     { enabled: !!account },
   )
 
-  const items: MarketplaceItem[] =
+  const allItems: MarketplaceItem[] =
     data?.data?.map((obj) => parseObjectToItem(obj)).filter((item): item is MarketplaceItem => item !== null) ?? []
+
+  const auctionableItems = allItems.filter((item) => isAuctionable(item.type))
+  const nonAuctionableCount = allItems.length - auctionableItems.length
 
   if (!account) {
     return (
@@ -33,7 +48,7 @@ export default function MyItemsPage() {
           </div>
           <h1 className="text-2xl font-semibold mb-2">Connect Your Wallet</h1>
           <p className="text-muted-foreground mb-6 max-w-md">Connect your Sui wallet to view your on-chain items.</p>
-          <ConnectButton className="!bg-primary !text-primary-foreground !rounded-md !px-6 !py-3 !text-sm !font-medium hover:!bg-primary/90" />
+          <ConnectWallet />
         </div>
       </div>
     )
@@ -42,34 +57,42 @@ export default function MyItemsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <Boxes className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold">My Items</h1>
-          <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">Your On-Chain Objects</span>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <Boxes className="h-6 w-6 text-primary" />
+            <h1 className="text-3xl font-bold">My Items</h1>
+            <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded">Your On-Chain Objects</span>
+          </div>
+          <MintNFTDialog onSuccess={() => refetch()} />
         </div>
         <p className="text-muted-foreground">
-          View and manage objects you own on the Sui network. Accept bids from potential buyers.
+          View and manage objects you own on the Sui network. Create auctions to sell your items.
         </p>
       </div>
 
       {isLoading ? (
         <ItemGridSkeleton count={8} />
-      ) : items.length === 0 ? (
+      ) : auctionableItems.length === 0 ? (
         <EmptyState
           icon={Boxes}
-          title="No items found"
-          description="You don't own any items yet. Visit the marketplace to discover items or receive items from other users."
+          title="No auctionable items found"
+          description={
+            nonAuctionableCount > 0
+              ? `You have ${nonAuctionableCount} objects (like Coins) that cannot be auctioned. Mint or acquire NFTs to create auctions.`
+              : "You don't own any items yet. Visit the marketplace to discover items or receive items from other users."
+          }
           actionLabel="Browse Marketplace"
           actionHref="/"
         />
       ) : (
         <>
           <div className="mb-4 text-sm text-muted-foreground">
-            {items.length} {items.length === 1 ? "item" : "items"} found
+            {auctionableItems.length} auctionable {auctionableItems.length === 1 ? "item" : "items"} found
+            {nonAuctionableCount > 0 && ` (${nonAuctionableCount} non-auctionable objects hidden)`}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {items.map((item) => (
-              <ItemCard key={item.objectId} item={item} source="my-items" />
+            {auctionableItems.map((item) => (
+              <ItemCard key={item.objectId} item={item} showCreateAuction={true} linkPrefix="/my-items" onAuctionSuccess={() => refetch()} />
             ))}
           </div>
         </>

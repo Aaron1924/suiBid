@@ -1,11 +1,35 @@
 // Contract addresses - replace with your actual contract addresses
-export const MARKETPLACE_PACKAGE_ID = "0x0" // Replace with actual package ID
+// NEXT_PUBLIC_ prefix required for client-side access in Next.js
+export const SUIBID_PACKAGE_ID = process.env.NEXT_PUBLIC_PACKAGE_ID
+
 export const MARKETPLACE_MODULE = "marketplace"
+export const AUCTION_MODULE = "auction"
+export const NFT_MODULE = "nft"
+export const TRADE_MODULE = "trade"
+
+// Sui Clock Object ID (standard Sui system object at 0x6)
+export const SUI_CLOCK_OBJECT_ID = "0x6"
+
+// RewardsRegistry shared object ID - created when the package is deployed
+// To find this ID: query for objects created during package deployment with type RewardsRegistry
+export const REWARDS_REGISTRY_ID = process.env.NEXT_PUBLIC_REWARDS_REGISTRY_ID
+
+// AdminPool shared object ID - created when the package is deployed (for auction fees)
+export const ADMIN_POOL_ID = process.env.NEXT_PUBLIC_ADMIN_POOL_ID
+
+// Auction item type - replace with your actual NFT type
+export const AUCTION_ITEM_TYPE = `${SUIBID_PACKAGE_ID}::${NFT_MODULE}::SuiBidNFT`
+
+// Demo auction ID for marketplace display - replace with actual auction object ID
+export const DEMO_AUCTION_ID = "" // Paste your auction object ID here, e.g. "0xabc123..."
+// To get an auction ID:
+// 1. Run: sui client call --package <PACKAGE_ID> --module auction --function create_auction --args <params>
+// 2. Find the created object ID in the transaction output
+// 3. Paste it here
 
 // Object type filters for fetching user items
 export const SUPPORTED_ITEM_TYPES = [
   // Add your supported item types here
-  // e.g., "0x2::nft::NFT"
 ]
 
 // Pagination

@@ -39,23 +39,88 @@ export interface Bid {
   timestamp: number
 }
 
+export interface ParsedAuction {
+  id: string
+  item: any // Embedded item object (not an ID), contains .fields with NFT data
+  seller: string
+  minBid: number
+  highestBid: number
+  highestBidder: string | null
+  endTime: number
+  active: boolean
+}
+
 // Parse Sui object to marketplace item
 export function parseObjectToItem(object: any): MarketplaceItem | null {
   try {
-    const content = object.data?.content
+    const data = object.data || object
+    const content = data?.content
     if (!content) return null
 
     const fields = content.fields || {}
 
+    // Check display data first (Sui Display standard), then fall back to content fields
+    const display = data?.display?.data || {}
+
+    // Handle name - check display, then fields
+    const name = display.name || fields.name || `Object ${formatAddress(data.objectId)}`
+
+    // Handle description
+    const description = display.description || fields.description || "No description available"
+
+    // Handle image_url - can be string or object with url property
+    const rawImageUrl = display.image_url || fields.image_url || fields.url
+    const imageUrl = typeof rawImageUrl === 'object' && rawImageUrl?.url ? rawImageUrl.url : rawImageUrl
+
+    // Handle owner
+    const ownerData = data.owner
+    const owner = typeof ownerData === "string"
+      ? ownerData
+      : ownerData?.AddressOwner || ownerData?.ObjectOwner || "Unknown"
+
     return {
-      objectId: object.data.objectId,
-      name: fields.name || `Object ${formatAddress(object.data.objectId)}`,
-      description: fields.description || "No description available",
-      imageUrl: fields.image_url || fields.url,
+      objectId: data.objectId,
+      name,
+      description,
+      imageUrl,
       type: content.type || "Unknown",
-      owner: typeof object.data.owner === "string" ? object.data.owner : object.data.owner?.AddressOwner || "Unknown",
+      owner,
     }
-  } catch {
+  } catch (e) {
+    console.error("[parseObjectToItem] Error parsing object:", e, object)
+    return null
+  }
+}
+
+export function parseAuctionObject(object: any): ParsedAuction | null {
+  try {
+    // Handle both direct object and nested data structure
+    const content = object?.content || object?.data?.content
+    if (!content || content.dataType !== "moveObject") {
+      console.log("[parseAuctionObject] No valid content found:", JSON.stringify(object, null, 2))
+      return null
+    }
+
+    const fields = content.fields as any
+    if (!fields) {
+      console.log("[parseAuctionObject] No fields found in content")
+      return null
+    }
+
+    console.log("[parseAuctionObject] Fields:", JSON.stringify(fields, null, 2))
+
+    return {
+      id: fields.id?.id || object?.objectId || object?.data?.objectId || "",
+      item: fields.item, // Keep full embedded item object for NFT data extraction
+      seller: fields.seller || "",
+      minBid: Number.parseInt(fields.min_bid || "0", 10),
+      highestBid: Number.parseInt(fields.highest_bid || "0", 10),
+      highestBidder: fields.highest_bidder?.fields?.vec?.[0] || fields.highest_bidder || null,
+      endTime: Number.parseInt(fields.end_time || "0", 10),
+      active: fields.active ?? true,
+    }
+  } catch (e) {
+    console.error("[parseAuctionObject] Error:", e)
     return null
   }
 }
