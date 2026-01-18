@@ -4,9 +4,18 @@
 
 [published.testnet]
 chain-id = "4c78adac"
+<<<<<<< HEAD
 published-at = "0x2bfb87b87722f481a1e1d146fe5b5394bdb2bd94b9db4d41c6388da6ebddfb90"
 original-id = "0x2bfb87b87722f481a1e1d146fe5b5394bdb2bd94b9db4d41c6388da6ebddfb90"
 version = 1
 toolchain-version = "1.63.2"
 build-config = { flavor = "sui", edition = "2024" }
 upgrade-capability = "0x799323d14905577d065cfc4269fddf60288fccff40a7f925d1d17f3d932dd20a"
+=======
+published-at = "0x920d2bf0f92badcaf2545748464463f14da55e2d4bb3359ac36c299b4f2c8dec"
+original-id = "0x920d2bf0f92badcaf2545748464463f14da55e2d4bb3359ac36c299b4f2c8dec"
+version = 1
+toolchain-version = "1.63.2"
+build-config = { flavor = "sui", edition = "2024" }
+upgrade-capability = "0xcf036b8660ea6f020edde812928aa0dcd95b17df6edea0b062d8d649accc47cc"
+>>>>>>> f4c500f (add admin pool and withdraw)

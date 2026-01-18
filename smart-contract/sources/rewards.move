@@ -5,23 +5,23 @@ module suibid::rewards {
     // ===== Constants =====
 
     // Point rewards
-    const TRADE_SELLER_POINTS: u64 = 10;
-    const TRADE_BUYER_POINTS: u64 = 10;
-    const AUCTION_SELLER_POINTS: u64 = 50;
-    const AUCTION_BUYER_POINTS: u64 = 20;
+    const TRADE_SELLER_POINTS: u64 = 2;
+    const TRADE_BUYER_POINTS: u64 = 2;
+    const AUCTION_SELLER_POINTS: u64 = 5;
+    const AUCTION_BUYER_POINTS: u64 = 2;
 
-    // Tier thresholds (0-1000 points)
-    const TIER_SILVER: u64 = 500;    // 200-399 points
+    // Tier thresholds (0-1500 points)
+    const TIER_SILVER: u64 = 5;    // 200-399 points
     const TIER_GOLD: u64 = 700;      // 400-599 points
     const TIER_PLATINUM: u64 = 1200;  // 600-799 points
     const TIER_DIAMOND: u64 = 1500;   // 800-1000 points
 
     // Refund percentages (in basis points, 100 = 1%)
-    const BRONZE_REFUND: u64 = 0;      // 0%
-    const SILVER_REFUND: u64 = 500;    // 5%
-    const GOLD_REFUND: u64 = 700;      // 7%
-    const PLATINUM_REFUND: u64 = 900;  // 9%
-    const DIAMOND_REFUND: u64 = 1000;  // 10%
+    const BRONZE_REFUND: u64 = 50;      // 0.5%
+    const SILVER_REFUND: u64 = 100;    // 1%
+    const GOLD_REFUND: u64 = 300;      // 3%
+    const PLATINUM_REFUND: u64 = 350;  // 3.5%
+    const DIAMOND_REFUND: u64 = 400;  // 4%
 
     // ===== Structs =====
 
